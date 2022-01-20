@@ -25,7 +25,7 @@ spec:
                 value: '1'
             envFrom:
               - secretRef:
-                  name: parladata-credentials
+                  name: parladata-slovenija-credentials
               - secretRef:
                   name: parlaparser-slovenija-credentials
             resources:
