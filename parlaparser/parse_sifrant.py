@@ -58,6 +58,13 @@ def parse_birth_string(data):
 
 def parse(storage):
 
+    group_classifications = {
+        'deputy group': 'pg',
+        'committee': 'committee',
+        'srugo': 'other',
+        'skupina prijateljstva': 'friendship_group'
+    }
+
     connection_types = {
         #'C': 'koordinator',
         'CL': 'member',
@@ -122,7 +129,8 @@ def parse(storage):
                 birth_date = None
             # TODO create parsing gender [parladata api] person['OSEBA_SPOL']
             # TODO okraj [parladata api] person['OSEBA_POSLANSKI_MANDAT']['POSLANSKI_MANDAT_OKRAJ_NAZIV']
-            storage.get_or_add_person(
+            # TODO update parsername with OSEBA_SIFRA if person exists
+            person_id, added_person = storage.get_or_add_person(
                 name,
                 {
                     'parser_names': f'{name}|{person["OSEBA_SIFRA"]}',
@@ -130,6 +138,9 @@ def parse(storage):
                     'date_of_birth': birth_date,
                 }
             )
+            # update existing person with GOV ID
+            if not added_person:
+                storage.add_person_parser_name(person_id, person["OSEBA_SIFRA"])
 
         # add groups
         print('Adding groups')
@@ -153,7 +164,7 @@ def parse(storage):
                 'name': name,
                 'parser_names': f'{name}|{group["SUBJEKT_FUNKCIJA_SIFRA"]}',
                 'gov_id': group["SUBJEKT_FUNKCIJA_SIFRA"],
-                'classification': subject_type_str,
+                'classification': group_classifications[subject_type_str.lower()],
                 'founding_date': founding_date,
             }
             if acronym:
@@ -178,10 +189,12 @@ def parse(storage):
 
             print(person_gov_id, org_gov_id)
 
-            person_id, added_person = storage.get_or_add_person(
-                person_gov_id,
-                {}
+            person_id, added_person = storage.get_person(
+                person_gov_id
             )
+            # dont add memberships for people which not in ['SIF']['OSEBE']
+            if not person_id:
+                continue
 
             organization_id, added_org = storage.get_or_add_organization(
                 org_gov_id,
@@ -205,7 +218,7 @@ def parse(storage):
                             'role': role
                         }
                     )
-                if org_gov_id in ps_keys:
+                if org_gov_id in ps_keys and role == 'member':
                     if not storage.is_membership_parsed(person_id, organization_id, 'voter'):
                         storage.add_membership(
                             {

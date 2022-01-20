@@ -4,6 +4,8 @@ import logging
 from requests.auth import HTTPBasicAuth
 from parlaparser import settings
 
+logger = logging.getLogger('logger')
+
 
 class ParladataApi(object):
     def __init__(self):
@@ -17,11 +19,11 @@ class ParladataApi(object):
             url = url + f'&limit={limit}'
         else:
             url = url + f'?limit={limit}'
-        logging.debug(url)
+        logger.debug(url)
         while url:
             response = requests.get(url, auth=self.auth)
             if response.status_code != 200:
-                logging.warning(response.content)
+                logger.warning(response.content)
             data = response.json()
             yield data['results']
             url = data['next']
@@ -40,7 +42,7 @@ class ParladataApi(object):
                 auth=self.auth
             )
         if response.status_code > 299:
-            logging.warning(response.content)
+            logger.warning(response.content)
         return response
 
     def _patch_object(self, endpoint, data):
@@ -50,7 +52,7 @@ class ParladataApi(object):
                 auth=self.auth
             )
         if response.status_code > 299:
-            logging.warning(response.content)
+            logger.warning(response.content)
         return response
 
     def set_object(self, endpoint, data):
@@ -80,6 +82,24 @@ class ParladataApi(object):
     def get_legislation(self):
         return self._get_objects('legislation')
 
+    def get_legislation_classifications(self):
+        return self._get_objects('legislation-classifications')
+
+    def get_procedures(self):
+        return self._get_objects('procedures')
+
+    def get_procedure_phases(self):
+        return self._get_objects('procedure-phases')
+
+    def get_legislation_consideration(self):
+        return self._get_objects('legislation-consideration')
+
+    def set_legislation_consideration(self, data):
+        return self._set_object('legislation-consideration', data)
+
+    def get_legislation_statuses(self):
+        return self._get_objects('legislation-status')
+
     def get_memberships(self, role=None):
         if role:
             role = f'?role=role'
@@ -98,11 +118,40 @@ class ParladataApi(object):
             query = '?' + ('&'.join(query))
         return self._get_data_from_pager_api_gen(f'speeches/{id}{query}', limit=1)
 
+    def get_session_speech_count(self, session_id):
+        url = f'{self.base_url}/speeches/?session={session_id}'
+        response = requests.get(url, auth=self.auth)
+        return response.json()['count']
+
     def set_person(self, data):
+        name = data.get('name', '')
+        name, prefix = self.parse_name_prefix(name)
+        if prefix:
+            parser_names = data.pop('parser_names', '')
+            parser_names += f'|{name}'
+            data.update({
+                'honorific_prefix': prefix,
+                'parser_names': parser_names,
+                'name': name,
+            })
+        logger.warning(data)
         return self._set_object('people', data)
+
+    def add_person_parser_name(self, person_id, parser_name):
+        return self._set_object(
+            f'people/{person_id}/add_parser_name', {
+            'parser_name': parser_name
+        })
+
+    def unvalidate_speeches(self, session_id):
+        return self._set_object(
+            f'sessions/{session_id}/unvalidate_speeches', {})
 
     def set_organization(self, data):
         return self._set_object('organizations', data)
+
+    def set_area(self, data):
+        return self._set_object('areas', data)
 
     def set_membership(self, data):
         return self._set_object('person-memberships', data).json()
@@ -125,6 +174,9 @@ class ParladataApi(object):
     def patch_motion(self, id, data):
         return self._patch_object(f'motions/{id}', data).json()
 
+    def patch_session(self, id, data):
+        return self._patch_object(f'sessions/{id}', data).json()
+
     def set_question(self, data):
         return self._set_object('questions', data).json()
 
@@ -139,6 +191,10 @@ class ParladataApi(object):
 
     def set_legislation(self, data):
         return self._set_object('legislation', data).json()
+
+    def patch_legislation(self, id, data):
+        return self._patch_object(f'legislation/{id}', data).json()
+
 
     def set_agenda_item(self, data):
         return self._set_object('agenda-items', data).json()
@@ -155,5 +211,22 @@ class ParladataApi(object):
                 auth=self.auth
             )
         if response.status_code > 299:
-            logging.warning(response.content)
+            logger.warning(response.content)
         return response
+
+    def parse_name_prefix(self, name):
+        prefixes = [
+            'dr',
+            'mag',
+            'prof'
+        ]
+
+        tokenized_name = name.split(' ')
+        first_word = tokenized_name[0].replace('.', '').lower()
+
+        prefix = None
+        if first_word in prefixes:
+            name = ' '.join(tokenized_name[1:])
+            prefix = first_word
+
+        return name, prefix
