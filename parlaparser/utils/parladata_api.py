@@ -200,7 +200,7 @@ class ParladataApi(object):
         return self._set_object('agenda-items', data).json()
 
     def upload_image(self, endpoint, url):
-        file_name = f'parlaparser/files/{endpoint}.jpg'
+        file_name = f'/tmp/{endpoint}.jpg'
         response = requests.get(url)
         with open(file_name, 'wb') as f:
             f.write(response.content)

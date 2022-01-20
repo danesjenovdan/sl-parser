@@ -75,9 +75,9 @@ class SessionParser(object):
         ]
         for url_group in session_url_groups:
             response = requests.get(url_group['url'])
-            with open(f'parlaparser/files/{url_group["file_name"]}', 'wb') as f:
+            with open(f'/tmp/{url_group["file_name"]}', 'wb') as f:
                 f.write(response.content)
-            with open(f'parlaparser/files/{url_group["file_name"]}', 'rb') as data_file:
+            with open(f'/tmp/{url_group["file_name"]}', 'rb') as data_file:
                 data = xmltodict.parse(data_file, dict_constructor=dict)
 
             # load documents from XML

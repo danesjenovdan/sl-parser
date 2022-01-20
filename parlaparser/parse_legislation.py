@@ -68,9 +68,9 @@ class LegislationParser(object):
         for legislation_file in urls:
             print('parse file: ', legislation_file["file_name"])
             response = requests.get(legislation_file['url'])
-            with open(f'parlaparser/files/{legislation_file["file_name"]}', 'wb') as f:
+            with open(f'/tmp/{legislation_file["file_name"]}', 'wb') as f:
                 f.write(response.content)
-            with open(f'parlaparser/files/{legislation_file["file_name"]}', 'rb') as data_file:
+            with open(f'/tmp/{legislation_file["file_name"]}', 'rb') as data_file:
                 data = xmltodict.parse(data_file, dict_constructor=dict)
 
             # load documents from XML

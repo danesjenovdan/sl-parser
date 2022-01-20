@@ -99,9 +99,9 @@ def parse(storage):
 
     url = f'https://fotogalerija.dz-rs.si/datoteke/opendata/SIF.XML'
     response = requests.get(url)
-    with open(f'parlaparser/files/SIF.XML', 'wb') as f:
+    with open(f'/tmp/SIF.XML', 'wb') as f:
         f.write(response.content)
-    with open('parlaparser/files/SIF.XML', 'rb') as data_file:
+    with open('/tmp/SIF.XML', 'rb') as data_file:
         data = xmltodict.parse(data_file, dict_constructor=dict)
 
         print(data['SIF'].keys())
