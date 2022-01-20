@@ -350,7 +350,11 @@ class SessionParser(object):
             #     self.storage.set_link(link_data)
 
         # follow pagination
-        paging_meta = htree.cssselect(".pagerDeluxe_text")[0].text.split(' ')
+        try:
+            paging_meta = htree.cssselect(".pagerDeluxe_text")[0].text.split(' ')
+        except:
+            # This exit method if session has not votes
+            return
         current_page = paging_meta[1]
         last_page = paging_meta[3]
         if int(current_page) < int(last_page):
