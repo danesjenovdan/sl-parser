@@ -60,12 +60,12 @@ class SessionParser(object):
 
         mandate = 'VIII'
         session_url_groups = [
-            # {
-            #     'url':'https://fotogalerija.dz-rs.si/datoteke/opendata/SDZ.XML',
-            #     'root_key': 'SDZ',
-            #     'file_name': 'SDZ.XML',
-            #     'dz_url': 'https://www.dz-rs.si/wps/portal/Home/seje/izbranaSeja'
-            # },
+            {
+                'url':'https://fotogalerija.dz-rs.si/datoteke/opendata/SDZ.XML',
+                'root_key': 'SDZ',
+                'file_name': 'SDZ.XML',
+                'dz_url': 'https://www.dz-rs.si/wps/portal/Home/seje/izbranaSeja'
+            },
             {
                 'url': 'https://fotogalerija.dz-rs.si/datoteke/opendata/SDT.XML',
                 'root_key': 'SDT',
