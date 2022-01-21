@@ -190,7 +190,12 @@ class ParladataApi(object):
         return self._patch_object(f'votes/{id}', data).json()
 
     def set_legislation(self, data):
-        return self._set_object('legislation', data).json()
+        response = self._set_object('legislation', data)
+        try:
+            data = response.json()
+        except:
+            logger.warning(response.content)
+        return data
 
     def patch_legislation(self, id, data):
         return self._patch_object(f'legislation/{id}', data).json()
