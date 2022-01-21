@@ -191,7 +191,8 @@ class SessionParser(object):
                     'start_time': start_time.isoformat(),
                     'in_review': session_in_review,
                     'needs_editing': session_needs_editing,
-                    'gov_id': session_url
+                    'gov_id': session_url,
+                    'mandate_id': self.storage.mandate_id
                 })
 
                 parse_all_speeches = False
