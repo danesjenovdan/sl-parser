@@ -296,7 +296,12 @@ class SessionParser(object):
 
             parsed_ballots = self.parse_ballots(ballots_url)
 
-            start_time = datetime.strptime(f'{date} {time}', '%d. %m. %Y %X')
+            try:
+                start_time = datetime.strptime(f'{date} {time}', '%d. %m. %Y %X')
+            except Exception as e:
+                # TODO send sentry error
+                print('parse date error', e)
+                continue
 
             motion_meta = parsed_ballots['meta']
             if motion_meta['title']:
