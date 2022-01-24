@@ -525,7 +525,7 @@ class SessionParser(object):
         else:
             date_string = re.findall(extract_date_reg, ' '.join(meta))
             if date_string:
-                start_time = datetime.strptime(date_string, '%d. %B %Y')
+                start_time = datetime.strptime(date_string[0], '%d. %B %Y')
             else:
                 start_time = session_start_time
 

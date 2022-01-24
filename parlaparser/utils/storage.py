@@ -63,7 +63,7 @@ class DataStorage(object):
         logging.warning(f'loaded {len(self.votes)} votes')
 
         for _session in self.parladata_api.get_sessions():
-            self.sessions[f'{_session["name"]}_{"_".join(list(map(str, _session["organizations"])))}'] = _session['id']
+            self.sessions[self.get_session_key(_session)] = _session['id']
             if _session['in_review']:
                 self.sessions_in_review.append(_session['id'])
         logging.warning(f'loaded {len(self.sessions)} sessions')
@@ -126,6 +126,9 @@ class DataStorage(object):
 
     def get_motion_key(self, motion):
         return (motion['gov_id'] if motion['gov_id'] else '').strip().lower()
+
+    def get_session_key(self, session):
+        return (session['gov_id'] if session['gov_id'] else '').strip().lower()
 
     def get_question_key(self, question):
         return (question['title'] + question['timestamp'] + question['recipient_text']).strip().lower()
@@ -219,7 +222,7 @@ class DataStorage(object):
         return membership
 
     def add_or_get_session(self, data):
-        key = f'{data["name"]}_{self.main_org_id}'
+        key = self.get_session_key(data)
         if key in self.sessions:
             return self.sessions[key], False
         else:
