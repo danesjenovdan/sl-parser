@@ -233,7 +233,8 @@ class SessionParser(object):
                                 }
                                 self.storage.set_link(link_data)
 
-                if parse_votes:
+                # TODO check, the condition may stink
+                if parse_votes and (session_id in self.storage.sessions_in_review or session_added):
                     ballots = self.parse_votes(request_session, session_htree, session_id)
 
                 print("parse speeches?: ",parse_speeches, parse_all_speeches, parse_new_speeches)
