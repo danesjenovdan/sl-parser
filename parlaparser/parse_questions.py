@@ -57,6 +57,7 @@ class QuestionParser(object):
             title = question_card['KARTICA_NASLOV']
             recipient_text = question_card['KARTICA_NASLOVLJENEC']
             question_type_text = question_card['KARTICA_VRSTA']
+            question_unid = question_card['UNID']
             timestamp = datetime.strptime(date, '%Y-%m-%d')
 
             if question_type_text == 'PP':
@@ -73,6 +74,7 @@ class QuestionParser(object):
                 'recipient_text': recipient_text,
                 'type_of_question': question_type,
                 'timestamp': timestamp.isoformat(),
+                'gov_id': question_unid
             }
             if self.storage.check_if_question_is_parsed(question_data):
                 continue

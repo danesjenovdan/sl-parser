@@ -131,7 +131,7 @@ class DataStorage(object):
         return (session['gov_id'] if session['gov_id'] else '').strip().lower()
 
     def get_question_key(self, question):
-        return (question['title'] + question['timestamp'] + question['recipient_text']).strip().lower()
+        return question['gov_id'].strip().lower()
 
     def get_agenda_key(self, agenda_item):
         return (agenda_item['name'] + '_' + agenda_item['datetime']).strip().lower()
