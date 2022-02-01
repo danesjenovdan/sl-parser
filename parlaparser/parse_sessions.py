@@ -98,9 +98,13 @@ class SessionParser(object):
                     print('Session has unvalid name')
                     continue
 
-                if (session_number and int(session_name) != int(session_number)) or (session_type and session_type_xml != session_type):
-                    print('skip session')
+                try:
+                    if (session_number and int(session_name) != int(session_number)) or (session_type and session_type_xml != session_type):
+                        print('skip session')
+                        continue
+                except:
                     continue
+
 
                 uid = session['KARTICA_SEJE']['UNID'].split('|')[1]
 
@@ -469,7 +473,7 @@ class SessionParser(object):
         result = []
         meta = []
 
-        find_person = r'(^[A-ZČŠŽĆĐ. ]{3,25} [A-ZČŠŽĆĐ. ]{3,25}){1}(\([A-Za-zđčćžšČĆŽŠŽĐ ]*\)){0,1}(:)?'
+        find_person = r'(^[A-ZČŠŽĆĐ. ]{3,25}\s*(?:[(A-ZČŠŽĆĐ)])*? [A-ZČŠŽĆĐ. ]{3,25}){1}(\([A-Za-zđčćžšČĆŽŠŽĐ ]*\)){0,1}(:)?'
 
         regex_is_start_of_content = r'seja .{5,14} (ob)?\s?\d{1,2}'
 

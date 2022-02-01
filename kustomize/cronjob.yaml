@@ -30,9 +30,9 @@ spec:
                   name: parlaparser-slovenija-credentials
             resources:
               requests:
-                memory: 1Gi # OOMKilled
+                memory: 2Gi # OOMKilled
                 cpu: 900m
               limits:
-                memory: 1Gi # OOMKilled
+                memory: 2Gi # OOMKilled
                 cpu: 900m
           restartPolicy: Never
