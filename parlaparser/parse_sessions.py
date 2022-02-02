@@ -147,6 +147,10 @@ class SessionParser(object):
                 except:
                     pass
 
+                # skip parsing session with start time in future
+                if start_time > datetime.now():
+                    continue
+
                 try:
                     # try find date from "Sklic seje" for session start time
                     documents_on_page = session_htree.cssselect('form>div>table>tbody>tr a')
@@ -187,7 +191,7 @@ class SessionParser(object):
                     organization_id = self.storage.main_org_id
 
                 # get or add session
-                session_id, session_added = self.storage.add_or_get_session({
+                session_data, session_added = self.storage.add_or_get_session({
                     'name': f'{session_name}. {session_type_xml.lower()} seja',
                     'organization': organization_id,
                     'organizations': [organization_id],
@@ -198,6 +202,10 @@ class SessionParser(object):
                     'gov_id': session_url,
                     'mandate_id': self.storage.mandate_id
                 })
+                session_id = session_data['id']
+                if session_data['start_time'] != start_time.isoformat():
+                    # patch session start_time if is changed on dz page
+                    self.storage.patch_session(session_id, {'start_time': start_time.isoformat()})
 
                 parse_all_speeches = False
                 parse_new_speeches = False
@@ -473,16 +481,20 @@ class SessionParser(object):
         result = []
         meta = []
 
-        find_person = r'(^[A-ZČŠŽĆĐ. ]{3,25}\s*(?:[(A-ZČŠŽĆĐ)])*? [A-ZČŠŽĆĐ. ]{3,25}){1}(\([A-Za-zđčćžšČĆŽŠŽĐ ]*\)){0,1}(:)?'
+        find_person = r'(^(Nadaljevanje )?[A-ZČŠŽĆÖĐÒÓÔÖÜÛÚÙÀÁÄÂÌÍÎÏ. ]{3,25}\s*(?:[(A-ZČŠŽĆÖĐÒÓÔÖÜÛÚÙÀÁÄÂÌÍÎÏ)])*? [A-ZČŠŽĆÖĐÒÓÔÖÜÛÚÙÀÁÄÂÌÍÎÏ. ]{3,25}){1}(\([A-ZČŠŽĆÖĐÒÓÔÖÜÛÚÙÀÁÄÂÌÍÎÏa-zčšžćöđòóôöüûúùàáäâìíîï ]*\)){0,1}(:)?(\s)?'
+        find_mister = r'(^GOSPOD_{4,50})(:)?'
 
         regex_is_start_of_content = r'seja .{5,14} (ob)?\s?\d{1,2}'
 
         regex_start_wierd_wb_session = r'Odprti .{3} seje se je začel ob \d\d'
 
-        find_trak_r = r'\d{1,2}. TRAK:? \([A-ZŠŽĆČ]{1,3}\)'
-        find_trak_r = r'^([\dOa]{1,2}\s*.)?\s*TRAK\b'
+        #find_trak_r = r'\d{1,2}. TRAK:? \([A-ZŠŽĆČ]{1,3}\)'
+        find_trak_r = r'^([\dOa]{1,4}\s*.)?\s*TRAK\b'
 
         date_of_sitting = htree.cssselect("table td span")[-1].text
+
+        trak_on_action = False
+        append_text_to_last_content = False
 
         for element in htree.cssselect("span.outputText font"):
             #line = element.text.strip()
@@ -492,7 +504,21 @@ class SessionParser(object):
 
             # skip line if contians TRAK:
             if re.search(find_trak_r, line):
+                trak_on_action = True
                 continue
+
+
+            # resolve track clutter from text
+            if trak_on_action:
+                track_continue_words = ['(nadaljevanje)', '(Nadaljevanje)']
+                for skip_word in track_continue_words:
+                    if line.startswith(skip_word):
+                        line = line[len(skip_word):].strip()
+
+                # apeend this pharagraph to previous
+                append_text_to_last_content = True
+
+                trak_on_action = False
 
             if state == ParserState.META:
                 if line:
@@ -503,18 +529,49 @@ class SessionParser(object):
             elif state == ParserState.CONTENT:
                 if element.getparent().tag == 'b':
                     person_line = re.findall(find_person, line)
+                    mister_line = re.findall(find_mister, line)
                     if len(person_line) == 1 and self.is_valid_name(person_line[0][0]):
                         if speaker:
                             result.append((speaker, '\n'.join(content)))
                             content = []
                         speaker = person_line[0]
+                        append_text_to_last_content = False
+                    elif len(mister_line) == 1:
+                        if speaker:
+                            result.append((speaker, '\n'.join(content)))
+                            content = []
+                        speaker = mister_line[0]
+                        append_text_to_last_content = False
                     else:
-                        # TODO trak magic
                         if line.lower().startswith('seja se je kon'):
                             continue
-                        content.append(line)
+
+                        # if TRAK si on parahragh then "dont append" new line
+                        if append_text_to_last_content:
+                            print('Content')
+                            if content:
+                                print('append line to last content')
+                                content[-1] += f' {line}'
+                                print(content[-1])
+                            else:
+                                content.append(line)
+                            append_text_to_last_content = False
+                        else:
+                            content.append(line)
                 else:
-                    content.append(line)
+                    if not speaker:
+                        continue
+                    if append_text_to_last_content:
+                        print('Content')
+                        if content:
+                            print('append line to last content')
+                            content[-1] += f' {line}'
+                            print(content[-1])
+                        else:
+                            content.append(line)
+                        append_text_to_last_content = False
+                    else:
+                        content.append(line)
 
         result.append((speaker, '\n'.join(content)))
 
@@ -567,6 +624,7 @@ class SessionParser(object):
         return the_order
 
     def fix_name(self, full_name):
+        full_name = full_name.strip()
         remove_from_name = [
             'PREDSEDNIK',
             'PREDSENDIK',
@@ -595,11 +653,15 @@ class SessionParser(object):
             'PREDSENDICA',
             'PRDSEDNIK',
             'PREDSEDNCA',
-            'PRDSEDNICA',
+            'PRDSEDNICA'
+            'PREDSEDNNICA',
+            'PREDSEDNI',
+            'Nadaljevanje',
         ]
         for word in remove_from_name:
-            if word in full_name:
-                full_name = full_name.replace(word, '')
+            word = word + ' '
+            if full_name.startswith(word):
+                full_name = full_name.replace(word, '').strip()
         return full_name
 
     def is_valid_name(self, full_name):

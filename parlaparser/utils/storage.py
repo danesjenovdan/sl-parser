@@ -63,14 +63,19 @@ class DataStorage(object):
         logging.warning(f'loaded {len(self.votes)} votes')
 
         for _session in self.parladata_api.get_sessions():
-            self.sessions[self.get_session_key(_session)] = _session['id']
+            self.sessions[self.get_session_key(_session)] = {
+                'id' :_session['id'],
+                'start_time' :_session['id'],
+            }
             if _session['in_review']:
                 self.sessions_in_review.append(_session['id'])
         logging.warning(f'loaded {len(self.sessions)} sessions')
 
         for session in self.sessions.values():
-            speeche_count = self.parladata_api.get_session_speech_count(session_id=session)
-            self.sessions_speech_count[session] = speeche_count
+            if not session['id'] in self.sessions_in_review:
+                continue
+            speeche_count = self.parladata_api.get_session_speech_count(session_id=session['id'])
+            self.sessions_speech_count[session['id']] = speeche_count
             if speeche_count > 0:
                 self.sessions_with_speeches.append(speeche_count)
 
@@ -229,7 +234,10 @@ class DataStorage(object):
             data.update(mandate=self.mandate_id)
             session_data = self.parladata_api.set_session(data)
             self.sessions[key] = session_data['id']
-            return session_data['id'], True
+            return {
+                'id': session_data['id'],
+                'start_time': session_data['start_time'],
+            }, True
 
     def unvalidate_speeches(self, session_id):
         self.parladata_api.unvalidate_speeches(session_id)

@@ -119,7 +119,7 @@ class ParladataApi(object):
         return self._get_data_from_pager_api_gen(f'speeches/{id}{query}', limit=1)
 
     def get_session_speech_count(self, session_id):
-        url = f'{self.base_url}/speeches/?session={session_id}'
+        url = f'{self.base_url}/speeches/?session={session_id}&?limit=1'
         response = requests.get(url, auth=self.auth)
         return response.json()['count']
 
@@ -221,9 +221,10 @@ class ParladataApi(object):
 
     def parse_name_prefix(self, name):
         prefixes = [
+            'doc',
             'dr',
             'mag',
-            'prof'
+            'prof',
         ]
 
         tokenized_name = name.split(' ')
