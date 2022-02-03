@@ -58,14 +58,13 @@ class DataStorage(object):
                 #self.klubovi[org['id']] = org['name']
         logging.warning(f'loaded {len(self.organizations)} organizations')
         for vote in self.parladata_api.get_votes():
-            logging.warning(vote)
             self.votes[self.get_vote_key(vote)] = vote['id']
         logging.warning(f'loaded {len(self.votes)} votes')
 
         for _session in self.parladata_api.get_sessions():
             self.sessions[self.get_session_key(_session)] = {
-                'id' :_session['id'],
-                'start_time' :_session['id'],
+                'id': _session['id'],
+                'start_time': _session['start_time'],
             }
             if _session['in_review']:
                 self.sessions_in_review.append(_session['id'])

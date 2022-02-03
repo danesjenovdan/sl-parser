@@ -481,7 +481,8 @@ class SessionParser(object):
         result = []
         meta = []
 
-        find_person = r'(^(Nadaljevanje )?[A-ZČŠŽĆÖĐÒÓÔÖÜÛÚÙÀÁÄÂÌÍÎÏ. ]{3,25}\s*(?:[(A-ZČŠŽĆÖĐÒÓÔÖÜÛÚÙÀÁÄÂÌÍÎÏ)])*? [A-ZČŠŽĆÖĐÒÓÔÖÜÛÚÙÀÁÄÂÌÍÎÏ. ]{3,25}){1}(\([A-ZČŠŽĆÖĐÒÓÔÖÜÛÚÙÀÁÄÂÌÍÎÏa-zčšžćöđòóôöüûúùàáäâìíîï ]*\)){0,1}(:)?(\s)?'
+        # TODO make method parse_name + tests
+        find_person = r'(^(Nadaljevanje )?[A-ZČŠŽĆÖĐÒÓÔÖÜÛÚÙÀÁÄÂÌÍÎÏ.]{3,25}\s*(?:[(A-ZČŠŽĆÖĐÒÓÔÖÜÛÚÙÀÁÄÂÌÍÎÏ)])*? [A-ZČŠŽĆÖĐÒÓÔÖÜÛÚÙÀÁÄÂÌÍÎÏ. ]{3,25}){1}(\([A-ZČŠŽĆÖĐÒÓÔÖÜÛÚÙÀÁÄÂÌÍÎÏa-zčšžćöđòóôöüûúùàáäâìíîï ]*\)){0,1}(:)?(\s)?'
         find_mister = r'(^GOSPOD_{4,50})(:)?'
 
         regex_is_start_of_content = r'seja .{5,14} (ob)?\s?\d{1,2}'
@@ -506,7 +507,6 @@ class SessionParser(object):
             if re.search(find_trak_r, line):
                 trak_on_action = True
                 continue
-
 
             # resolve track clutter from text
             if trak_on_action:
@@ -562,11 +562,8 @@ class SessionParser(object):
                     if not speaker:
                         continue
                     if append_text_to_last_content:
-                        print('Content')
                         if content:
-                            print('append line to last content')
                             content[-1] += f' {line}'
-                            print(content[-1])
                         else:
                             content.append(line)
                         append_text_to_last_content = False
@@ -657,6 +654,7 @@ class SessionParser(object):
             'PREDSEDNNICA',
             'PREDSEDNI',
             'Nadaljevanje',
+            'PREDSEDINK',
         ]
         for word in remove_from_name:
             word = word + ' '
@@ -668,10 +666,11 @@ class SessionParser(object):
         """
         Checker for valid names
         Name is unvalid if;
-            * if combiend form more 4 words
+            * if combiend form more 5 words
             * contains forbiden words
         """
-        if len(full_name.split(' ')) > 4:
+        full_name = full_name.strip()
+        if len(full_name.split(' ')) > 5:
             return False
         lower_name = full_name.lower()
         forbiden_name_words = [
@@ -692,7 +691,8 @@ class SessionParser(object):
             'nalezljivih',
             'predlogu',
             'skupno',
-            'obvestilo'
+            'obvestilo',
+            'omenjene',
         ]
         for word in forbiden_name_words:
             if word in lower_name:
