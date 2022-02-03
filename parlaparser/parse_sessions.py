@@ -347,7 +347,11 @@ class SessionParser(object):
                 'session': session_id,
             }
             motion_obj = self.storage.set_motion(motion)
-            motion_id = motion_obj['id']
+            try:
+                motion_id = motion_obj['id']
+            except:
+                # skip adding vote because adding motion was fail
+                continue
             vote['motion'] = motion_id
             vote_obj = self.storage.set_vote(vote)
             vote_id = int(vote_obj['id'])
