@@ -92,6 +92,8 @@ class SessionParser(object):
                 organization_name = session['KARTICA_SEJE']['KARTICA_STATUS']
                 print(f'parsing session {index}/{num_of_session}')
 
+                start_time = None
+
                 session_needs_editing = False
 
                 if not session_name:
@@ -147,10 +149,6 @@ class SessionParser(object):
                 except:
                     pass
 
-                # skip parsing session with start time in future
-                if start_time > datetime.now():
-                    continue
-
                 try:
                     # try find date from "Sklic seje" for session start time
                     documents_on_page = session_htree.cssselect('form>div>table>tbody>tr a')
@@ -169,6 +167,10 @@ class SessionParser(object):
                         else:
                             # TODO sentry call or something. That is wierd case in sklic without date.
                             session_needs_editing = True
+
+                    # skip parsing session with start time in future
+                    if start_time > datetime.now():
+                        continue
 
                 except Exception as e:
                     print('----ERROR.....:   cannot find date', e)
