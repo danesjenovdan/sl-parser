@@ -160,8 +160,12 @@ class SessionParser(object):
                         sklic_htree = html.fromstring(sklic_content)
 
                         sklic_start_time = self.find_date_form_table(sklic_htree)
-                        if sklic_start_time:
+                        if sklic_start_time and not start_time:
+                            # if session has not speeches try to find start time from sklic
                             start_time = sklic_start_time
+                        elif start_time:
+                            # if session has speeches then use date of 1st speech
+                            pass
                         else:
                             # TODO sentry call or something. That is wierd case in sklic without date.
                             session_needs_editing = True
