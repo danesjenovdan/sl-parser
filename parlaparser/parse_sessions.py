@@ -493,7 +493,7 @@ class SessionParser(object):
 
         # TODO make method parse_name + tests
         find_person = r'(^(Nadaljevanje )?[A-ZČŠŽĆÖĐÒÓÔÖÜÛÚÙÀÁÄÂÌÍÎÏ.]{3,25}\s*(?:[(A-ZČŠŽĆÖĐÒÓÔÖÜÛÚÙÀÁÄÂÌÍÎÏ)])*? [A-ZČŠŽĆÖĐÒÓÔÖÜÛÚÙÀÁÄÂÌÍÎÏ. ]{3,25}){1}(\([A-ZČŠŽĆÖĐÒÓÔÖÜÛÚÙÀÁÄÂÌÍÎÏa-zčšžćöđòóôöüûúùàáäâìíîï ]*\)){0,1}(:)?(\s)?'
-        find_mister = r'(^GOSPOD_{4,50})(:)?'
+        find_mister_or_madam = r'(^GOSPOD\s?_{4,50}|^GOSPA\s?_{4,50})(:)?'
 
         regex_is_start_of_content = r'seja .{5,14} (ob)?\s?\d{1,2}'
 
@@ -539,18 +539,18 @@ class SessionParser(object):
             elif state == ParserState.CONTENT:
                 if element.getparent().tag == 'b':
                     person_line = re.findall(find_person, line)
-                    mister_line = re.findall(find_mister, line)
+                    mister_or_madam_line = re.findall(find_mister_or_madam, line)
                     if len(person_line) == 1 and self.is_valid_name(person_line[0][0]):
                         if speaker:
                             result.append((speaker, '\n'.join(content)))
                             content = []
                         speaker = person_line[0]
                         append_text_to_last_content = False
-                    elif len(mister_line) == 1:
+                    elif len(mister_or_madam_line) == 1:
                         if speaker:
                             result.append((speaker, '\n'.join(content)))
                             content = []
-                        speaker = mister_line[0]
+                        speaker = mister_or_madam_line[0]
                         append_text_to_last_content = False
                     else:
                         if line.lower().startswith('seja se je kon'):
