@@ -163,7 +163,10 @@ class ParladataApi(object):
         return self._set_object('sessions', data).json()
 
     def set_speeches(self, data):
-        return self._set_object('speeches', data).json()
+        try:
+            return self._set_object('speeches', data).json()
+        except:
+            return {}
 
     def set_ballots(self, data):
         return self._set_object('ballots', data).json()
