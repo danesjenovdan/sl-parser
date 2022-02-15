@@ -499,8 +499,8 @@ class SessionParser(object):
 
         regex_start_wierd_wb_session = r'Odprti .{3} seje se je začel ob \d\d'
 
-        #find_trak_r = r'\d{1,2}. TRAK:? \([A-ZŠŽĆČ]{1,3}\)'
-        find_trak_r = r'^([\dOa]{1,4}\s*.)?\s*TRAK\b'
+        #find_trak_r = r'^([\dOa]{1,4}\s*.)?\s*TRAK\b'
+        find_trak_r = r'^([\dOa\.]{1,4}\s*.|[\dOa]{1,4}\s*.\s*(in)?\s*[\dOa]{1,4}\s*.)?\s*TRAK\b'
 
         date_of_sitting = htree.cssselect("table td span")[-1].text
 
