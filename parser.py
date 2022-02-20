@@ -4,6 +4,19 @@ from parlaparser.parse_legislation import LegislationParser
 from parlaparser.parse_questions import QuestionParser
 from parlaparser.utils.storage import DataStorage
 
+import sentry_sdk
+import os
+
+sentry_sdk.init(
+    os.getenv('SENTRY_URL', None),
+    environment=os.getenv('SENTRY_ENVIRONMENT', 'test'),
+
+    # Set traces_sample_rate to 1.0 to capture 100%
+    # of transactions for performance monitoring.
+    # We recommend adjusting this value in production.
+    traces_sample_rate=1.0
+)
+
 
 storage = DataStorage()
 

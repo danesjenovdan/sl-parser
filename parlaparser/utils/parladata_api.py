@@ -4,6 +4,8 @@ import logging
 from requests.auth import HTTPBasicAuth
 from parlaparser import settings
 
+import sentry_sdk
+
 logger = logging.getLogger('logger')
 
 
@@ -24,6 +26,7 @@ class ParladataApi(object):
             response = requests.get(url, auth=self.auth)
             if response.status_code != 200:
                 logger.warning(response.content)
+                sentry_sdk.capture_message(response.content)
             data = response.json()
             yield data['results']
             url = data['next']
@@ -43,6 +46,7 @@ class ParladataApi(object):
             )
         if response.status_code > 299:
             logger.warning(response.content)
+            sentry_sdk.capture_message(response.content)
         return response
 
     def _patch_object(self, endpoint, data):
@@ -53,6 +57,7 @@ class ParladataApi(object):
             )
         if response.status_code > 299:
             logger.warning(response.content)
+            sentry_sdk.capture_message(response.content)
         return response
 
     def set_object(self, endpoint, data):
