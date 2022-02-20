@@ -2,6 +2,7 @@ import requests
 import xmltodict
 import re
 import locale
+import sentry_sdk
 
 from datetime import datetime
 
@@ -162,7 +163,11 @@ class LegislationParser(object):
         if epa in self.storage.legislation.keys():
             legislation_id = self.storage.legislation[epa]['id']
 
-            procedure_phase_id = self.storage.procedure_phases[legislation_consideration.pop('consideration_phase')]['id']
+            try:
+                procedure_phase_id = self.storage.procedure_phases[legislation_consideration.pop('consideration_phase')]['id']
+            except Exception as err:
+                sentry_sdk.capture_exception(err)
+                return
             organization_name = legislation_consideration['organization']
 
             if organization_name:
