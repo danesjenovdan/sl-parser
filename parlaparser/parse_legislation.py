@@ -120,6 +120,7 @@ class LegislationParser(object):
                 champion_wb = legislation['KARTICA_DELOVNA_TELESA']
                 legislation_procedure_type = legislation['KARTICA_POSTOPEK']
                 legislation_procedure_phase = legislation['KARTICA_FAZA_POSTOPKA']
+                legislation_session = legislation.get('KARTICA_SEJA', None)
                 if date:
                     date_iso = datetime.strptime(date, '%Y-%m-%d').isoformat()
                 else:
@@ -127,6 +128,9 @@ class LegislationParser(object):
 
                 legislation_documents = wraped_legislation.get('PODDOKUMENTI', [])
                 document_unids = get_values(legislation_documents)
+
+                if legislation_session:
+                    legislation_session = legislation_session.strip('0').lower() + ' seja'
 
                 connected_legislation = wraped_legislation.get('POVEZANI_PREDPISI', [])
                 connected_legislation_unids = get_values(connected_legislation)
@@ -147,14 +151,20 @@ class LegislationParser(object):
                     document_unids
                 )
             else: # legislation consideration
+                data = {
+                    'epa': epa,
+                    'uid': unid,
+                    'organization': champion_wb,
+                    'timestamp': date_iso,
+                    'consideration_phase': legislation_procedure_phase
+                }
+                if legislation_session:
+                    print(legislation_session)
+                    session_id = self.storage.dz_sessions_by_names.get(legislation_session, None)
+                    if session_id:
+                        data.update(session=session_id)
                 self.set_legislation_consideration(
-                    {
-                        'epa': epa,
-                        'uid': unid,
-                        'organization': champion_wb,
-                        'timestamp': date_iso,
-                        'consideration_phase': legislation_procedure_phase
-                    },
+                    data,
                     document_unids
                 )
 
@@ -193,6 +203,9 @@ class LegislationParser(object):
                 )
                 self.add_docs(document_unids, {'legislation_consideration': legislation_consideration_obj['id']})
                 # when patch don't add documents...
+        else:
+            print('Legislation of this consideration does not parserd')
+
 
 
     def add_or_update_legislation(self, legislation_obj, document_unids):
@@ -219,14 +232,12 @@ class LegislationParser(object):
 
 
     def add_docs(self, document_unids, document_parent_object):
-        print(document_unids)
         if not document_unids:
             return
         for doc_unid in document_unids:
             if doc_unid in self.document_keys:
                 document = self.documents[doc_unid]
                 doc_title = document['title']
-                print(document['urls'])
                 for doc_url in document['urls']:
                     link_data = {
                         'url': doc_url,

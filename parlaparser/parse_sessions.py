@@ -507,10 +507,14 @@ class SessionParser(object):
         trak_on_action = False
         append_text_to_last_content = False
 
-        for element in htree.cssselect("span.outputText font"):
+        for element in htree.cssselect("span.outputText font, span.outputText br"):
             #line = element.text.strip()
-            line = ' '.join(map(str.strip, element.xpath("./text()"))).strip()
-            if not line:
+            if element.tag == 'br':
+                content.append('\n')
+                continue
+            # line = ' '.join(map(str.strip, element.xpath("./text()")))
+            line = ''.join(element.xpath("./text()"))
+            if line == None:
                 continue
 
             # skip line if contians TRAK:
@@ -542,13 +546,13 @@ class SessionParser(object):
                     mister_or_madam_line = re.findall(find_mister_or_madam, line)
                     if len(person_line) == 1 and self.is_valid_name(person_line[0][0]):
                         if speaker:
-                            result.append((speaker, '\n'.join(content)))
+                            result.append((speaker, ''.join(content)))
                             content = []
                         speaker = person_line[0]
                         append_text_to_last_content = False
                     elif len(mister_or_madam_line) == 1:
                         if speaker:
-                            result.append((speaker, '\n'.join(content)))
+                            result.append((speaker, ''.join(content)))
                             content = []
                         speaker = mister_or_madam_line[0]
                         append_text_to_last_content = False
@@ -556,7 +560,7 @@ class SessionParser(object):
                         if line.lower().startswith('seja se je kon'):
                             continue
 
-                        # if TRAK si on parahragh then "dont append" new line
+                        # if TRAK is on paragraph then "dont append" new line
                         if append_text_to_last_content:
                             print('Content')
                             if content:
@@ -569,8 +573,10 @@ class SessionParser(object):
                         else:
                             content.append(line)
                 else:
+                    # skip lines before speeches
                     if not speaker:
                         continue
+                    # merge content of TRAK-s
                     if append_text_to_last_content:
                         if content:
                             content[-1] += f' {line}'
@@ -580,7 +586,7 @@ class SessionParser(object):
                     else:
                         content.append(line)
 
-        result.append((speaker, '\n'.join(content)))
+        result.append((speaker, ''.join(content)))
 
         return meta, result, date_of_sitting
 

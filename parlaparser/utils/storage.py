@@ -18,6 +18,7 @@ class DataStorage(object):
     votes = {}
     motions = {}
     sessions = {}
+    dz_sessions_by_names = {}
     sessions_with_speeches = []
     sessions_speech_count = {}
     sessions_in_review = []
@@ -68,7 +69,10 @@ class DataStorage(object):
             }
             if _session['in_review']:
                 self.sessions_in_review.append(_session['id'])
+            if int(self.main_org_id) in _session['organizations']:
+                self.dz_sessions_by_names[_session['name'].lower()] = _session['id']
         logging.warning(f'loaded {len(self.sessions)} sessions')
+        logging.warning(f'loaded {self.dz_sessions_by_names.keys()}')
 
         for session in self.sessions.values():
             if not session['id'] in self.sessions_in_review:
@@ -233,6 +237,9 @@ class DataStorage(object):
             data.update(mandate=self.mandate_id)
             session_data = self.parladata_api.set_session(data)
             self.sessions[key] = session_data['id']
+            print(session_data)
+            if self.main_org_id in session_data['organizations']:
+                self.dz_sessions_by_names[session_data['name'].lower()] = session_data['id']
             return {
                 'id': session_data['id'],
                 'start_time': session_data['start_time'],
@@ -242,7 +249,9 @@ class DataStorage(object):
         self.parladata_api.unvalidate_speeches(session_id)
 
     def add_speeches(self, data):
-        self.parladata_api.set_speeches(data)
+        chunks = [data[x:x+100] for x in range(0, len(data), 100)]
+        for chunk in chunks:
+            self.parladata_api.set_speeches(chunk)
 
     def set_ballots(self, data):
         added_ballots = self.parladata_api.set_ballots(data)
