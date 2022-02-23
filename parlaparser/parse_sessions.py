@@ -767,7 +767,6 @@ class SessionParser(object):
             'predlog',
             'dogovor',
             'proračuna',
-            'nadaljevanje',
         ]
         for word in forbiden_name_words:
             if word in lower_name:
