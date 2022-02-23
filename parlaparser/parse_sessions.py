@@ -67,13 +67,12 @@ class SessionParser(object):
                 'file_name': 'SDZ.XML',
                 'dz_url': 'https://www.dz-rs.si/wps/portal/Home/seje/izbranaSeja'
             },
-            # Disable WB sessions
-            # {
-            #     'url': 'https://fotogalerija.dz-rs.si/datoteke/opendata/SDT.XML',
-            #     'root_key': 'SDT',
-            #     'file_name': 'SDT.XML',
-            #     'dz_url': 'https://www.dz-rs.si/wps/portal/Home/seje/izbranaSejaDt'
-            # }
+            {
+                'url': 'https://fotogalerija.dz-rs.si/datoteke/opendata/SDT.XML',
+                'root_key': 'SDT',
+                'file_name': 'SDT.XML',
+                'dz_url': 'https://www.dz-rs.si/wps/portal/Home/seje/izbranaSejaDt'
+            }
         ]
         for url_group in session_url_groups:
             response = requests.get(url_group['url'])
