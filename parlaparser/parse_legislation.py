@@ -163,10 +163,13 @@ class LegislationParser(object):
                     session_id = self.storage.dz_sessions_by_names.get(legislation_session, None)
                     if session_id:
                         data.update(session=session_id)
-                self.set_legislation_consideration(
-                    data,
-                    document_unids
-                )
+                try:
+                    self.set_legislation_consideration(
+                        data,
+                        document_unids
+                    )
+                except:
+                    pass
 
     def set_legislation_consideration(self, legislation_consideration, document_unids):
         epa = legislation_consideration['epa']
