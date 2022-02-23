@@ -4,6 +4,7 @@ from requests.packages.urllib3.util.retry import Retry
 import xmltodict
 import re
 import locale
+import sentry_sdk
 
 from datetime import datetime
 
@@ -66,12 +67,13 @@ class SessionParser(object):
                 'file_name': 'SDZ.XML',
                 'dz_url': 'https://www.dz-rs.si/wps/portal/Home/seje/izbranaSeja'
             },
-            {
-                'url': 'https://fotogalerija.dz-rs.si/datoteke/opendata/SDT.XML',
-                'root_key': 'SDT',
-                'file_name': 'SDT.XML',
-                'dz_url': 'https://www.dz-rs.si/wps/portal/Home/seje/izbranaSejaDt'
-            }
+            # Disable WB sessions
+            # {
+            #     'url': 'https://fotogalerija.dz-rs.si/datoteke/opendata/SDT.XML',
+            #     'root_key': 'SDT',
+            #     'file_name': 'SDT.XML',
+            #     'dz_url': 'https://www.dz-rs.si/wps/portal/Home/seje/izbranaSejaDt'
+            # }
         ]
         for url_group in session_url_groups:
             response = requests.get(url_group['url'])
@@ -287,6 +289,9 @@ class SessionParser(object):
                             session_start_time=start_time,
                             date_of_sitting=date_of_sitting
                         )
+                        # Dont parse next spech page if cureent isn't valid
+                        if start_order == None:
+                            break
 
 
 
@@ -327,6 +332,10 @@ class SessionParser(object):
                 title = f'{motion_meta["title"]} - {motion_meta["doc_name"]}'
             else:
                 title = motion_meta["doc_name"]
+
+            # dont parse motion without title
+            if not title:
+                continue
 
             legislation_id = None
             if epa:
@@ -562,11 +571,8 @@ class SessionParser(object):
 
                         # if TRAK is on paragraph then "dont append" new line
                         if append_text_to_last_content:
-                            print('Content')
                             if content:
-                                print('append line to last content')
                                 content[-1] += f' {line}'
-                                print(content[-1])
                             else:
                                 content.append(line)
                             append_text_to_last_content = False
@@ -612,8 +618,9 @@ class SessionParser(object):
         if speeches:
             if not speeches[0][0]:
                 print('[ERROR] Cannot read session content')
+                print(speeches)
                 # TODO send error
-                return
+                return None
 
 
         speech_objs = []
@@ -624,6 +631,11 @@ class SessionParser(object):
             )
             # skip adding speech if has lover order than last_added_index [for sessions in review]
             if last_added_index and order < last_added_index:
+                continue
+
+            if not speech:
+                print(speeches)
+                sentry_sdk.capture_message(f'Speech is without content session_id: {session_id} person_id: {person_id} the_order: {the_order}')
                 continue
 
             speech_objs.append({
