@@ -26,7 +26,7 @@ class ParladataApi(object):
             response = requests.get(url, auth=self.auth)
             if response.status_code != 200:
                 logger.warning(response.content)
-                sentry_sdk.capture_message(response.content)
+                sentry_sdk.capture_message(f'Parladata request GET with url: {url} responed with body: {response.content}')
             data = response.json()
             yield data['results']
             url = data['next']
@@ -46,7 +46,7 @@ class ParladataApi(object):
             )
         if response.status_code > 299:
             logger.warning(response.content)
-            sentry_sdk.capture_message(response.content)
+            sentry_sdk.capture_message(f'Parladata request POST endpoint: {endpoint} responed with body: {response.content}')
         return response
 
     def _patch_object(self, endpoint, data):
@@ -57,7 +57,7 @@ class ParladataApi(object):
             )
         if response.status_code > 299:
             logger.warning(response.content)
-            sentry_sdk.capture_message(response.content)
+            sentry_sdk.capture_message(f'Parladata request PATCH endpoint: {endpoint} responed with body: {response.content}')
         return response
 
     def set_object(self, endpoint, data):

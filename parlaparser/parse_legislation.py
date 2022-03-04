@@ -256,7 +256,8 @@ class LegislationParser(object):
 
 
 # OBRAVNAVA_PREDPISA -> KARTICA_FAZA_POSTOPKA
-faze = ['Zakonodajni referendum',
+faze = [
+    'Zakonodajni referendum',
     'druga obravnava - DZ',
     'druga obravnava - MDT',
     'druga obravnava DZ - nujni postopek',
@@ -280,7 +281,8 @@ faze = ['Zakonodajni referendum',
     'tretja obravnava',
     'tretja obravnava - nujni postopek',
     'tretja obravnava - skrajšani postopek',
-    'zahteva za ponovno odločanje']
+    'zahteva za ponovno odločanje'
+]
 
 # PREDPIS -> KARTICA_POSTOPEK
 ['sprejet predlog',

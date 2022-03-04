@@ -14,6 +14,7 @@ from urllib import parse
 
 from parlaparser.settings import BASE_URL
 from parlaparser.utils.methods import get_values
+from parlaparser.parse_speeches import SpeechParser
 
 
 class ParserState(Enum):
@@ -262,16 +263,14 @@ class SessionParser(object):
                     for orginal_speech_unid in speech_unids:
                         speech_url = self.magnetograms[orginal_speech_unid]
                         print('Speech url: ', speech_url)
-                        speeches_content = requests.get(url=speech_url).content
-                        htree = html.fromstring(speeches_content)
 
-                        err_mgs = htree.cssselect('form span.wcmLotusMessage')
-
-                        if err_mgs and err_mgs[0].text == 'Podatki dokumenta so nedostopni.':
-                            print('---_____retry another document ________------')
+                        speech_parser = SpeechParser(url=speech_url)
+                        if not speech_parser:
                             continue
 
-                        meta, speeches, date_of_sitting = self.parse_speeches(htree)
+                        meta = speech_parser.get_meta_data()
+                        speeches = speech_parser.get_content()
+                        date_of_sitting = speech_parser.get_sitting_date()
 
                         if parse_new_speeches:
                             last_added_index = self.storage.sessions_speech_count.get(session_id, 0)
@@ -489,112 +488,6 @@ class SessionParser(object):
             })
         self.storage.set_ballots(ballots_for_save)
 
-
-
-    def parse_speeches(self, htree):
-        print('parsing speeches')
-        state = ParserState.META
-        speaker = None
-        content = []
-        result = []
-        meta = []
-
-        # TODO make method parse_name + tests
-        find_person = r'(^(Nadaljevanje )?[A-ZČŠŽĆÖĐÒÓÔÖÜÛÚÙÀÁÄÂÌÍÎÏ.]{3,25}\s*(?:[(A-ZČŠŽĆÖĐÒÓÔÖÜÛÚÙÀÁÄÂÌÍÎÏ)])*? [A-ZČŠŽĆÖĐÒÓÔÖÜÛÚÙÀÁÄÂÌÍÎÏ. ]{3,25}){1}(\([A-ZČŠŽĆÖĐÒÓÔÖÜÛÚÙÀÁÄÂÌÍÎÏa-zčšžćöđòóôöüûúùàáäâìíîï ]*\)){0,1}(:)?(\s)?'
-        find_mister_or_madam = r'(^GOSPOD\s?_{4,50}|^GOSPA\s?_{4,50})(:)?'
-
-        regex_is_start_of_content = r'seja .{5,14} (ob)?\s?\d{1,2}'
-
-        regex_start_wierd_wb_session = r'Odprti .{3} seje se je začel ob \d\d'
-
-        #find_trak_r = r'^([\dOa]{1,4}\s*.)?\s*TRAK\b'
-        find_trak_r = r'^([\dOab\.]{1,4}\s*.|[\dOab]{1,4}\s*.\s*(in|-)??\s*[\dOab]{1,4}\s*.)?\s*TRAK\b'
-
-        date_of_sitting = htree.cssselect("table td span")[-1].text
-
-        trak_on_action = False
-        append_text_to_last_content = False
-
-        for element in htree.cssselect("span.outputText font, span.outputText br"):
-            #line = element.text.strip()
-            if element.tag == 'br':
-                content.append('\n')
-                continue
-            # line = ' '.join(map(str.strip, element.xpath("./text()")))
-            line = ''.join(element.xpath("./text()"))
-            if line == None:
-                continue
-
-            # skip line if contians TRAK:
-            if re.search(find_trak_r, line):
-                trak_on_action = True
-                continue
-
-            # resolve track clutter from text
-            if trak_on_action:
-                track_continue_words = ['(nadaljevanje)', '(Nadaljevanje)']
-                for skip_word in track_continue_words:
-                    if line.startswith(skip_word):
-                        line = line[len(skip_word):].strip()
-
-                # apeend this pharagraph to previous
-                append_text_to_last_content = True
-
-                trak_on_action = False
-
-            if state == ParserState.META:
-                if line:
-                    meta.append(line)
-
-                if re.search(regex_is_start_of_content, line, re.IGNORECASE) or line.startswith('Besedilo je objavljeno') or re.search(regex_start_wierd_wb_session, line, re.IGNORECASE):
-                    state = ParserState.CONTENT
-            elif state == ParserState.CONTENT:
-                if element.getparent().tag == 'b':
-                    person_line = re.findall(find_person, line)
-                    mister_or_madam_line = re.findall(find_mister_or_madam, line)
-                    if len(person_line) == 1 and self.is_valid_name(person_line[0][0]):
-                        if speaker:
-                            result.append((speaker, ''.join(content)))
-                            content = []
-                        speaker = person_line[0]
-                        append_text_to_last_content = False
-                    elif len(mister_or_madam_line) == 1:
-                        if speaker:
-                            result.append((speaker, ''.join(content)))
-                            content = []
-                        speaker = mister_or_madam_line[0]
-                        append_text_to_last_content = False
-                    else:
-                        if line.lower().startswith('seja se je kon'):
-                            continue
-
-                        # if TRAK is on paragraph then "dont append" new line
-                        if append_text_to_last_content:
-                            if content:
-                                content[-1] += f' {line}'
-                            else:
-                                content.append(line)
-                            append_text_to_last_content = False
-                        else:
-                            content.append(line)
-                else:
-                    # skip lines before speeches
-                    if not speaker:
-                        continue
-                    # merge content of TRAK-s
-                    if append_text_to_last_content:
-                        if content:
-                            content[-1] += f' {line}'
-                        else:
-                            content.append(line)
-                        append_text_to_last_content = False
-                    else:
-                        content.append(line)
-
-        result.append((speaker, ''.join(content)))
-
-        return meta, result, date_of_sitting
-
     def save_speeches(self, session_id, meta, speeches, start_order, organization_id, last_added_index=None, session_start_time=None, date_of_sitting=None):
         extract_date_reg = r'\((.*?)\)'
 
@@ -615,7 +508,7 @@ class SessionParser(object):
                 start_time = session_start_time
 
         if speeches:
-            if not speeches[0][0]:
+            if not speeches[0]['content']:
                 print('[ERROR] Cannot read session content')
                 print(speeches)
                 # TODO send error
@@ -623,154 +516,29 @@ class SessionParser(object):
 
 
         speech_objs = []
-        for order, (speaker_name, speech) in enumerate(speeches):
+        for order, speech in enumerate(speeches):
             the_order = start_order + order + 1
             person_id, added_person = self.storage.get_or_add_person(
-                self.fix_name(speaker_name[0].strip()).strip()
+                speech['person'].strip()
             )
             # skip adding speech if has lover order than last_added_index [for sessions in review]
             if last_added_index and order < last_added_index:
                 continue
 
-            if not speech:
+            if not speech['content']:
                 print(speeches)
                 sentry_sdk.capture_message(f'Speech is without content session_id: {session_id} person_id: {person_id} the_order: {the_order}')
                 continue
 
             speech_objs.append({
                 'speaker': person_id,
-                'content': speech,
+                'content': speech['content'],
                 'session': session_id,
                 'order': the_order,
                 'start_time': start_time.isoformat()
             })
         self.storage.add_speeches(speech_objs)
         return the_order
-
-    def fix_name(self, full_name):
-        full_name = full_name.strip()
-        remove_from_name = [
-            'PREDSEDNIK ',
-            'PREDSENDIK ',
-            'PODPREDSEDNIK ',
-            'PODPREDSENIK ',
-            'PODPREDSEDNICA ',
-            'PREDSEDIK ',
-            'POD ',
-            'PREDSEDNICA ',
-            'PREDSEDUJOČI ',
-            'PRESEDNICA ',
-            'POPDREDSEDNIK ',
-            'PREDSENICA ',
-            'PRESEDNIK ',
-            'PRESDEDNIK ',
-            'REDSEDNIK ',
-            'PREDSEDDNICA ',
-            'PEDSEDNIK ',
-            'PREDEDNIK ',
-            'PREDSEDNK ',
-            'REDSEDNICA ',
-            'PREDSDNIK ',
-            'DSEDNIK ',
-            'PREDEDNICA ',
-            'PREDSENIK ',
-            'PREDSENDICA ',
-            'PRDSEDNIK ',
-            'PREDSEDNCA ',
-            'PRDSEDNICA ',
-            'PREDSEDNNICA ',
-            'PREDSEDNI ',
-            'Nadaljevanje',
-            'PREDSEDINK ',
-            'PODPREDSEDINCA ',
-            'PODPRDSEDNICA ',
-            'PODPREDSEDICA ',
-            'PODPREDSEDNI ',
-            'PPREDSEDNIK ',
-            'PREDSEDNIKCA ',
-            'PODPPREDSEDNIK ',
-            'PREDSEDNIKA ',
-            'PREEDSEDNIK ',
-            'PODPREDSDNICA ',
-            'POPREDSEDNICA ',
-            'PREDSEDSEDNIK ',
-            'PODPREDSENDIK ',
-            'PREDSEDNIKI ',
-            'PODPRDSEDNIK ',
-            'PODPPREDSEDNICA ',
-            'PPODPREDSEDNI ',
-            'PODPEDSEDNIK ',
-            'PODREDSEDNIK ',
-            'PODPREDSEDNCA ',
-            'PODPREDSENICA ',
-            'PODPREDSEDNK ',
-            'PODPREDSDNIK ',
-            'PODREDSEDNICA ',
-            'PODPRESEDNICA ',
-            'PREDSEDINCA ',
-            'PREDSEDNCIA ',
-            'PREDSDEDNIK ',
-            'PREDSEDDNIK ',
-            'PREDESEDNIK ',
-            'PREDSDENIK ',
-            'PREDESENIK ',
-            'PREDSEDICA ',
-            'DPREDSEDNIK ',
-            'EDSEDNIK ',
-            'PODPREDEDNIK ',
-        ]
-        for word in remove_from_name:
-            if full_name.startswith(word):
-                full_name = full_name.replace(word, '').strip()
-        return full_name
-
-    def is_valid_name(self, full_name):
-        """
-        Checker for valid names
-        Name is unvalid if;
-            * if combiend form more 5 words
-            * contains forbiden words
-        """
-        full_name = full_name.strip()
-        if len(full_name.split(' ')) > 5:
-            return False
-        lower_name = full_name.lower()
-        forbiden_name_words = [
-            'obravnav',
-            'postopka',
-            'zakona',
-            'prekinjena',
-            'vprašanja',
-            'davku',
-            'prehajamo'
-            'dnevnega',
-            'poročilo',
-            'problematika',
-            'evropske',
-            'administrativne'
-            'predstavitev',
-            'industrijski',
-            'nalezljivih',
-            'predlogu',
-            'skupno',
-            'obvestilo',
-            'omenjene',
-            'gospodarstvu',
-            'neonacizem',
-            'negospodarnega',
-            'nadzor',
-            'sodišča',
-            'prisilni',
-            'slovenije',
-            'madžarkskega',
-            'predlog',
-            'dogovor',
-            'proračuna',
-        ]
-        for word in forbiden_name_words:
-            if word in lower_name:
-                return False
-        return True
 
     def get_session_type(self, type_text):
         type_text = type_text.lower().strip()
@@ -798,22 +566,6 @@ class SessionParser(object):
             return datetime.strptime(date_str, '%d. %m. %Y')
         # TODO send page date falure
         return None
-
-
-# perser imen regex
-
-# BRANKO SIMONOVIČ (PS DeSUS):
-# PODPREDSEDNICA TINA HEFERLE:
-# PREDSEDNIK MAG. DEJAN ŽIDAN:
-
-
-# ([A-ZČŠŽĆĐ. ]{5,50}){1}(\([A-Za-zđčćžšČĆŽŠŽĐ ]*\)){0,1}(:)?
-
-# ([A-ZČŠŽĆĐ. ]{5,50}){1}  <--- poslanec
-
-# (\([A-Za-zđčćžšČĆŽŠŽĐ ]*\)){0,1}  <-- stranka
-
-# (:)? <--- opcijsko dvopičje
 
 
 # Odločitve

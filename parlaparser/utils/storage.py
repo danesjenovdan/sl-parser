@@ -249,7 +249,7 @@ class DataStorage(object):
         self.parladata_api.unvalidate_speeches(session_id)
 
     def add_speeches(self, data):
-        chunks = [data[x:x+100] for x in range(0, len(data), 100)]
+        chunks = [data[x:x+50] for x in range(0, len(data), 50)]
         for chunk in chunks:
             self.parladata_api.set_speeches(chunk)
 
