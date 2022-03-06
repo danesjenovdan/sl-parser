@@ -26,6 +26,7 @@ class SpeechParser(object):
     FIND_TRAK = r'^([\dOab\.]{1,4}\s*.|[\dOab]{1,4}\s*.\s*(in|-)??\s*[\dOab]{1,4}\s*.)?\s*TRAK\b'
     FIND_SESSION_PAUSE = r'\(Seja .{6,10}(prekinjena|nadaljevala) .{6,10}\)'
     FIND_END_OF_SESSION = r'\(SEJA JE .{3,10} PREKINJENA .{10,35}\)|(^Seja .{5,10} konča)'
+    SKIP_SESSION_PAUSE = r'\(Seja je bila prekinjena.{5,15} se je nadaljevala.{5,15}\)'
 
     TRACK_CONTINUE_WORDS = ['(nadaljevanje)', '(Nadaljevanje)']
 
@@ -49,7 +50,7 @@ class SpeechParser(object):
         self.date_of_sitting = htree.cssselect("table td span")[-1].text
 
         self.parse_content(htree)
-        
+
 
     def get_content(self):
         return self.session_content
@@ -80,6 +81,10 @@ class SpeechParser(object):
             print(line)
             print(self.state)
             print()
+
+            if self.skip_line_if_needed(line_tree.text_content()):
+                continue
+
             if self.state == ParserState.META:
                 self.meta_data.append(line_tree.text_content())
                 if (re.search(self.REGEX_IS_START_OF_CONTENT, line, re.IGNORECASE) or
@@ -132,6 +137,7 @@ class SpeechParser(object):
 
     def parse_person_line(self, line_tree):
         name_candidate = line_tree.cssselect('b')
+        speaker=None
         if name_candidate:
             name_candidate = name_candidate[0].text
 
@@ -143,7 +149,7 @@ class SpeechParser(object):
             elif len(mister_or_madam_line) == 1:
                 speaker = mister_or_madam_line[0][0]
 
-            if person_line or mister_or_madam_line:
+            if speaker:
                 if self.current_person and self.current_text:
                     self.session_content.append({
                         'person': self.fix_name(self.current_person),
@@ -196,6 +202,12 @@ class SpeechParser(object):
             self.current_text.append(text)
 
         print(self.current_text)
+
+    def skip_line_if_needed(self, text):
+        if re.search(self.SKIP_SESSION_PAUSE, text):
+            return True
+        else:
+            return False
 
 
     def is_valid_name(self, full_name):
