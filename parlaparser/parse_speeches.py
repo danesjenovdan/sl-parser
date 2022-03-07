@@ -2,6 +2,7 @@ import requests
 import re
 from lxml import html, etree
 from enum import Enum
+import sentry_sdk
 
 class ParserState(Enum):
     META = 0
@@ -133,8 +134,14 @@ class SpeechParser(object):
             name_candidate = name_candidate[0].text
 
             # check if bolded text is valid person name
-            person_line = re.findall(self.FIND_PERSON, name_candidate)
-            mister_or_madam_line = re.findall(self.FIND_MISTER_OR_MADAM, name_candidate)
+            try:
+                person_line = re.findall(self.FIND_PERSON, name_candidate)
+                mister_or_madam_line = re.findall(self.FIND_MISTER_OR_MADAM, name_candidate)
+            except Exception as e:
+                person_line = []
+                person_line = []
+                print('fail find person with "name"', str(person_line))
+                sentry_sdk.capture_message(f'Find person regex fails with error {e}. Name candidate is: {name_candidate}')
             if len(person_line) == 1 and self.is_valid_name(person_line[0][0]):
                 speaker = person_line[0][0]
             elif len(mister_or_madam_line) == 1:
