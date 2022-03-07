@@ -75,10 +75,6 @@ class SpeechParser(object):
         self.current_text = []
         for line in lines:
             line_tree = html.fromstring(f'<span>{line}</span>')
-            print('---')
-            print(line)
-            print(self.state)
-            print()
 
             if self.find_trak(line_tree):
                 continue
@@ -122,12 +118,6 @@ class SpeechParser(object):
                 'person': self.fix_name(self.current_person),
                 'content': '\n'.join(self.current_text)
             })
-
-        print('RESULTS ------------')
-        for line in self.session_content:
-            print(line['person'])
-            print(line['content'])
-            print()
 
     def tostring_unwraped(self, element):
         string = element.text or ''
@@ -204,8 +194,6 @@ class SpeechParser(object):
             self.current_text[-1] += text
         else:
             self.current_text.append(text)
-
-        print(self.current_text)
 
     def skip_line_if_needed(self, text):
         if re.search(self.SKIP_SESSION_PAUSE, text):
