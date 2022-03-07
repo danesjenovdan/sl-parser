@@ -158,8 +158,11 @@ class SpeechParser(object):
                     self.current_text = []
 
                 self.current_person = speaker
-                text = line_tree.cssselect('span')[0].getchildren()[0].tail.strip()
-                self.current_text.append(text)
+                try:
+                    text = line_tree.cssselect('span')[0].getchildren()[0].tail.strip()
+                    self.current_text.append(text)
+                except:
+                    pass
                 self.state = ParserState.CONTENT
             else:
                 self.parse_text_line(line_tree)
