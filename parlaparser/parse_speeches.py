@@ -75,12 +75,13 @@ class SpeechParser(object):
         self.current_text = []
         for line in lines:
             line_tree = html.fromstring(f'<span>{line}</span>')
-            if self.find_trak(line_tree):
-                continue
             print('---')
             print(line)
             print(self.state)
             print()
+
+            if self.find_trak(line_tree):
+                continue
 
             if self.skip_line_if_needed(line_tree.text_content()):
                 continue
@@ -190,10 +191,10 @@ class SpeechParser(object):
         bold = line_tree.cssselect('b')
         if bold:
             trak_candidat = bold[0].text
-            if re.search(self.FIND_TRAK, trak_candidat):
-                self.state = ParserState.TRAK
-                return True
-
+            if isinstance(trak_candidat, str):
+                if re.search(self.FIND_TRAK, trak_candidat):
+                    self.state = ParserState.TRAK
+                    return True
         return False
 
     def append_to_last(self, text):
