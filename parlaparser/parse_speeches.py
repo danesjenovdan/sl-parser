@@ -49,6 +49,7 @@ class SpeechParser(object):
     def parse(self, parse_new_speeches=False):
         start_order = 0
         for url in self.urls:
+            print('Parsing speeches from url: {url}')
             self.page_content = []
             self.meta = []
             self.current_text = []
