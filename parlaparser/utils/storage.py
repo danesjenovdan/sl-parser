@@ -76,7 +76,9 @@ class DataStorage(object):
         for session in self.sessions.values():
             if not session['id'] in self.sessions_in_review:
                 continue
-            speeches_count = self.parladata_api.get_session_speech_count(session_id=session['id'])
+            #TODO workaround for empty DB
+            #speeches_count = self.parladata_api.get_session_speech_count(session_id=session['id'])
+            speeches_count = 0
             self.sessions_speech_count[session['id']] = speeches_count
             if speeches_count > 0:
                 self.sessions_with_speeches.append(speeches_count)
