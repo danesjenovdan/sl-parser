@@ -1,8 +1,10 @@
 import requests
 import re
+import sentry_sdk
 from lxml import html, etree
 from enum import Enum
-import sentry_sdk
+from datetime import datetime
+
 
 class ParserState(Enum):
     META = 0
@@ -32,36 +34,65 @@ class SpeechParser(object):
     TRACK_CONTINUE_WORDS = ['(nadaljevanje)', '(Nadaljevanje)']
 
     # data
-    session_content = []
-    meta_data = []
+    page_content = []
+    meta = []
     current_text = []
     current_person = None
     date_of_sitting = None
 
-    def __init__(self, url):
-        speeches_content = requests.get(url=url).text
-        htree = html.fromstring(speeches_content)
+    def __init__(self, storage, urls, session_id, session_start_time):
+        self.urls = urls
+        self.storage = storage
+        self.session_id = session_id
+        self.session_start_time = session_start_time
 
-        err_mgs = htree.cssselect('form span.wcmLotusMessage')
+    def parse(self, parse_new_speeches=False):
+        start_order = 0
+        for url in self.urls:
+            self.page_content = []
+            self.meta = []
+            self.current_text = []
+            self.current_person = None
+            self.date_of_sitting = None
+            speeches_content = requests.get(url=url).text
+            htree = html.fromstring(speeches_content)
 
-        if err_mgs and err_mgs[0].text == 'Podatki dokumenta so nedostopni.':
-            print('---_____retry another document ________------')
-            return
+            err_mgs = htree.cssselect('form span.wcmLotusMessage')
 
-        self.date_of_sitting = htree.cssselect("table td span")[-1].text
+            if err_mgs and err_mgs[0].text == 'Podatki dokumenta so nedostopni.':
+                print('---_____retry another document ________------')
+                return
 
-        self.parse_content(htree)
+            self.date_of_sitting = htree.cssselect("table td span")[-1].text
 
+            self.parse_content(htree)
 
+            if parse_new_speeches:
+                last_added_index = self.storage.sessions_speech_count.get(self.session_id, 0)
+            else:
+                last_added_index = None
+
+            print(f'document has {len(self.page_content)} speeches')
+            start_order = self.save_speeches(
+                start_order,
+                last_added_index,
+                self.session_start_time,
+            )
+            # Dont parse next spech page if cureent isn't valid
+            if start_order == None:
+                break
+
+    # getters
     def get_content(self):
-        return self.session_content
+        return self.page_content
 
     def get_meta_data(self):
-        return self.meta_data
+        return self.meta
 
     def get_sitting_date(self):
         return self.date_of_sitting
 
+    # main loop
     def parse_content(self, htree):
         output_text = htree.cssselect(".fieldset span.outputText")[0]
         etree.strip_tags(output_text, 'font')
@@ -84,7 +115,7 @@ class SpeechParser(object):
                 continue
 
             if self.state == ParserState.META:
-                self.meta_data.append(line_tree.text_content())
+                self.meta.append(line_tree.text_content())
                 if (re.search(self.REGEX_IS_START_OF_CONTENT, line, re.IGNORECASE) or
                     line.startswith('Besedilo je objavljeno') or
                     re.search(self.REGEX_START_WIERD_WB_SESSION, line, re.IGNORECASE)):
@@ -115,7 +146,7 @@ class SpeechParser(object):
 
 
         if self.current_person and self.current_text:
-            self.session_content.append({
+            self.page_content.append({
                 'person': self.fix_name(self.current_person),
                 'content': '\n'.join(self.current_text)
             })
@@ -149,7 +180,7 @@ class SpeechParser(object):
 
             if speaker:
                 if self.current_person and self.current_text:
-                    self.session_content.append({
+                    self.page_content.append({
                         'person': self.fix_name(self.current_person),
                         'content': '\n'.join(self.current_text)
                     })
@@ -337,6 +368,56 @@ class SpeechParser(object):
             if full_name.startswith(word):
                 full_name = full_name.replace(word, '').strip()
         return full_name
+
+    # save SPEECHES
+    def save_speeches(self, start_order, last_added_index=None, session_start_time=None):
+        extract_date_reg = r'\((.*?)\)'
+
+        if self.date_of_sitting:
+            date_string = self.date_of_sitting
+            try:
+                start_time = datetime.strptime(date_string, '%d. %m. %Y')
+            except:
+                # TODO send error
+                start_time = session_start_time
+        else:
+            date_string = re.findall(extract_date_reg, ' '.join(self.meta))
+            if date_string:
+                start_time = datetime.strptime(date_string[0], '%d. %B %Y')
+            else:
+                start_time = session_start_time
+
+        if self.page_content:
+            if not self.page_content[0]['content']:
+                print('[ERROR] Cannot read session content')
+                print(self.page_content)
+                # TODO send error
+                return None
+
+        speech_objs = []
+        for order, speech in enumerate(self.page_content):
+            the_order = start_order + order + 1
+            person_id, added_person = self.storage.get_or_add_person(
+                speech['person'].strip()
+            )
+            # skip adding speech if has lover order than last_added_index [for sessions in review]
+            if last_added_index and order < last_added_index:
+                continue
+
+            if not speech['content']:
+                print(self.page_content)
+                sentry_sdk.capture_message(f'Speech is without content session_id: {self.session_id} person_id: {person_id} the_order: {the_order}')
+                continue
+
+            speech_objs.append({
+                'speaker': person_id,
+                'content': speech['content'],
+                'session': self.session_id,
+                'order': the_order,
+                'start_time': start_time.isoformat()
+            })
+        self.storage.add_speeches(speech_objs)
+        return the_order
 
 
 

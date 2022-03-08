@@ -41,6 +41,7 @@ class DataStorage(object):
 
     def __init__(self):
         logging.warning(f'Start loading data')
+
         self.parladata_api = ParladataApi()
         for person in self.parladata_api.get_people():
             if not person['parser_names']:
@@ -53,14 +54,12 @@ class DataStorage(object):
             if not org['parser_names']:
                 continue
             self.organizations[org['parser_names'].lower()] = org['id']
-            if org['classification'] == 'pg':
-                pass
-                # TODO od remove
-                #self.klubovi[org['id']] = org['name']
         logging.warning(f'loaded {len(self.organizations)} organizations')
-        for vote in self.parladata_api.get_votes():
-            self.votes[self.get_vote_key(vote)] = vote['id']
-        logging.warning(f'loaded {len(self.votes)} votes')
+
+        # TODO uncoment for parsing votes
+        # for vote in self.parladata_api.get_votes():
+        #     self.votes[self.get_vote_key(vote)] = vote['id']
+        # logging.warning(f'loaded {len(self.votes)} votes')
 
         for _session in self.parladata_api.get_sessions():
             self.sessions[self.get_session_key(_session)] = {
@@ -77,25 +76,26 @@ class DataStorage(object):
         for session in self.sessions.values():
             if not session['id'] in self.sessions_in_review:
                 continue
-            speeche_count = self.parladata_api.get_session_speech_count(session_id=session['id'])
-            self.sessions_speech_count[session['id']] = speeche_count
-            if speeche_count > 0:
-                self.sessions_with_speeches.append(speeche_count)
+            speeches_count = self.parladata_api.get_session_speech_count(session_id=session['id'])
+            self.sessions_speech_count[session['id']] = speeches_count
+            if speeches_count > 0:
+                self.sessions_with_speeches.append(speeches_count)
 
-        for motion in self.parladata_api.get_motions():
-            self.motions[self.get_motion_key(motion)] = motion['id'] # TODO check if is key good key
-        logging.warning(f'loaded {len(self.motions)} motions')
+        # TODO uncoment this
+        # for motion in self.parladata_api.get_motions():
+        #     self.motions[self.get_motion_key(motion)] = motion['id'] # TODO check if is key good key
+        # logging.warning(f'loaded {len(self.motions)} motions')
 
-        for item in self.parladata_api.get_agenda_items():
-            self.agenda_items[self.get_agenda_key(item)] = item['id']
-        logging.warning(f'loaded {len(self.agenda_items)} agenda_items')
+        # for item in self.parladata_api.get_agenda_items():
+        #     self.agenda_items[self.get_agenda_key(item)] = item['id']
+        # logging.warning(f'loaded {len(self.agenda_items)} agenda_items')
 
-        for question in self.parladata_api.get_questions():
-            self.questions[self.get_question_key(question)] = {'id': question['id'], 'answer': question['answer_timestamp']}
-        logging.warning(f'loaded {len(self.questions)} questions')
+        # for question in self.parladata_api.get_questions():
+        #     self.questions[self.get_question_key(question)] = {'id': question['id'], 'answer': question['answer_timestamp']}
+        # logging.warning(f'loaded {len(self.questions)} questions')
 
-        for legislation in self.parladata_api.get_legislation():
-            self.legislation[legislation['epa']] = legislation
+        # for legislation in self.parladata_api.get_legislation():
+        #     self.legislation[legislation['epa']] = legislation
 
         logging.debug(self.people.keys())
         api_memberships = self.parladata_api.get_memberships()
@@ -103,27 +103,27 @@ class DataStorage(object):
             self.memberships[membership['organization']][membership['member']].append(membership)
         logging.warning(f'loaded {len(api_memberships)} memberships')
 
+        # TODO uncoment this
+        # api_legislation_classifications = self.parladata_api.get_legislation_classifications()
+        # for legislation_classification in api_legislation_classifications:
+        #     self.legislation_classifications[legislation_classification['name']] = legislation_classification['id']
 
-        api_legislation_classifications = self.parladata_api.get_legislation_classifications()
-        for legislation_classification in api_legislation_classifications:
-            self.legislation_classifications[legislation_classification['name']] = legislation_classification['id']
+        # api_procedures = self.parladata_api.get_procedures()
 
-        api_procedures = self.parladata_api.get_procedures()
+        # for procedure in api_procedures:
+        #     self.procedures[procedure['type']] = procedure['id']
 
-        for procedure in api_procedures:
-            self.procedures[procedure['type']] = procedure['id']
+        # api_procedure_phases = self.parladata_api.get_procedure_phases()
+        # for procedure_phase in api_procedure_phases:
+        #     self.procedure_phases[procedure_phase['name']] = procedure_phase
 
-        api_procedure_phases = self.parladata_api.get_procedure_phases()
-        for procedure_phase in api_procedure_phases:
-            self.procedure_phases[procedure_phase['name']] = procedure_phase
+        # api_legislation_considerations = self.parladata_api.get_legislation_consideration()
+        # for legislation_consideration in api_legislation_considerations:
+        #     self.legislation_considerations[self.get_legislation_consideration_key(legislation_consideration)] = legislation_consideration['id']
 
-        api_legislation_considerations = self.parladata_api.get_legislation_consideration()
-        for legislation_consideration in api_legislation_considerations:
-            self.legislation_considerations[self.get_legislation_consideration_key(legislation_consideration)] = legislation_consideration['id']
-
-        api_legislation_statuses = self.parladata_api.get_legislation_statuses()
-        for legislation_status in api_legislation_statuses:
-            self.legislation_statuses[legislation_status['name']] = legislation_status['id']
+        # api_legislation_statuses = self.parladata_api.get_legislation_statuses()
+        # for legislation_status in api_legislation_statuses:
+        #     self.legislation_statuses[legislation_status['name']] = legislation_status['id']
 
 
 
@@ -136,7 +136,7 @@ class DataStorage(object):
         return (motion['gov_id'] if motion['gov_id'] else '').strip().lower()
 
     def get_session_key(self, session):
-        return (session['gov_id'] if session['gov_id'] else '').strip().lower()
+        return session['gov_id'].strip().lower()
 
     def get_question_key(self, question):
         return question['gov_id'].strip().lower()

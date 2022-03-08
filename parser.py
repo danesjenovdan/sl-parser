@@ -24,15 +24,15 @@ storage = DataStorage()
 
 # session votes / speeches
 session_parser = SessionParser(storage)
-session_parser.parse(parse_speeches=True, parse_votes=True)
+session_parser.parse(parse_speeches=True, parse_votes=False)
 
 # use this for parse specific session
-#session_parser.parse(session_number='52', session_type='Izredna')
+#session_parser.parse(session_number='66', session_type='Izredna', parse_speeches=True, parse_votes=False)
 
 # legislation
-legislation_parser = LegislationParser(storage)
-legislation_parser.parse()
+# legislation_parser = LegislationParser(storage)
+# legislation_parser.parse()
 
-# questions
-question_parser = QuestionParser(storage)
-question_parser.parse()
+# # questions
+# question_parser = QuestionParser(storage)
+# question_parser.parse()
