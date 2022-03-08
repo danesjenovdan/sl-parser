@@ -87,7 +87,7 @@ class SessionParser(object):
 
             # load type of subjects
             num_of_session = len(data[url_group['root_key']]['SEJA'])
-            for index, session in enumerate(data[url_group['root_key']]['SEJA'])[90:]: # TODO enable this
+            for index, session in enumerate(data[url_group['root_key']]['SEJA'][90:]): # TODO enable this
                 print(session['KARTICA_SEJE']['KARTICA_OZNAKA'])
                 session_name = session['KARTICA_SEJE']['KARTICA_OZNAKA'].lstrip("0")
                 session_type_xml = session['KARTICA_SEJE']['KARTICA_VRSTA']
