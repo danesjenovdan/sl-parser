@@ -68,12 +68,12 @@ class SessionParser(object):
                 'file_name': 'SDZ.XML',
                 'dz_url': 'https://www.dz-rs.si/wps/portal/Home/seje/izbranaSeja'
             },
-            {
-                'url': 'https://fotogalerija.dz-rs.si/datoteke/opendata/SDT.XML',
-                'root_key': 'SDT',
-                'file_name': 'SDT.XML',
-                'dz_url': 'https://www.dz-rs.si/wps/portal/Home/seje/izbranaSejaDt'
-            }
+            # {
+            #     'url': 'https://fotogalerija.dz-rs.si/datoteke/opendata/SDT.XML',
+            #     'root_key': 'SDT',
+            #     'file_name': 'SDT.XML',
+            #     'dz_url': 'https://www.dz-rs.si/wps/portal/Home/seje/izbranaSejaDt'
+            # }
         ]
         for url_group in session_url_groups:
             response = requests.get(url_group['url'])
@@ -87,7 +87,7 @@ class SessionParser(object):
 
             # load type of subjects
             num_of_session = len(data[url_group['root_key']]['SEJA'])
-            for index, session in enumerate(data[url_group['root_key']]['SEJA']):
+            for index, session in enumerate(data[url_group['root_key']]['SEJA'])[90:]: # TODO enable this
                 print(session['KARTICA_SEJE']['KARTICA_OZNAKA'])
                 session_name = session['KARTICA_SEJE']['KARTICA_OZNAKA'].lstrip("0")
                 session_type_xml = session['KARTICA_SEJE']['KARTICA_VRSTA']
@@ -276,6 +276,8 @@ class SessionParser(object):
                             last_added_index = self.storage.sessions_speech_count.get(session_id, 0)
                         else:
                             last_added_index = None
+
+                        print(f'document has {len(speeches)} speeches')
 
                         start_order = self.save_speeches(
                             session_id,

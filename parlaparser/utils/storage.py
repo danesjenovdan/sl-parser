@@ -250,6 +250,7 @@ class DataStorage(object):
 
     def add_speeches(self, data):
         chunks = [data[x:x+50] for x in range(0, len(data), 50)]
+        print(f'Adding {len(chunks)} speech chunks')
         for chunk in chunks:
             self.parladata_api.set_speeches(chunk)
 
