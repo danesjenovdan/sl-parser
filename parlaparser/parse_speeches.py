@@ -149,7 +149,7 @@ class SpeechParser(object):
         if self.current_person and self.current_text:
             self.page_content.append({
                 'person': self.fix_name(self.current_person),
-                'content': '\n'.join(self.current_text)
+                'content': '\n'.join(self.current_text).lstrip(':')
             })
 
     def tostring_unwraped(self, element):
@@ -183,7 +183,7 @@ class SpeechParser(object):
                 if self.current_person and self.current_text:
                     self.page_content.append({
                         'person': self.fix_name(self.current_person),
-                        'content': '\n'.join(self.current_text)
+                        'content': '\n'.join(self.current_text).lstrip(':')
                     })
                     self.current_text = []
 
