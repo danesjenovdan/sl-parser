@@ -49,7 +49,7 @@ class SpeechParser(object):
     def parse(self, parse_new_speeches=False):
         start_order = 0
         for url in self.urls:
-            print('Parsing speeches from url: {url}')
+            print(f'Parsing speeches from url: {url}')
             self.page_content = []
             self.meta = []
             self.current_text = []
@@ -171,7 +171,7 @@ class SpeechParser(object):
                 mister_or_madam_line = re.findall(self.FIND_MISTER_OR_MADAM, name_candidate)
             except Exception as e:
                 person_line = []
-                person_line = []
+                mister_or_madam_line = []
                 print('fail find person with "name"', str(person_line))
                 sentry_sdk.capture_message(f'Find person regex fails with error {e}. Name candidate is: {name_candidate}')
             if len(person_line) == 1 and self.is_valid_name(person_line[0][0]):
