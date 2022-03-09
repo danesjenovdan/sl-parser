@@ -163,7 +163,7 @@ class SpeechParser(object):
         name_candidate = line_tree.cssselect('b')
         speaker=None
         if name_candidate:
-            name_candidate = name_candidate[0].text
+            name_candidate = name_candidate[0].text.strip()
 
             # check if bolded text is valid person name
             try:
