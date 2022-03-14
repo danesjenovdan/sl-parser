@@ -6,4 +6,4 @@ resources:
 images:
   - name: parlaparser-slovenija
     newName: rg.fr-par.scw.cloud/djnd/parlaparser-slovenija
-    newTag: '92b555781a53ced7e38fb8b929545524628ed987'
+    newTag: '12968094df817bedea1a63b79faa08e8a04ef8bc'
