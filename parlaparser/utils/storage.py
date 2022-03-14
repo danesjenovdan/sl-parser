@@ -56,10 +56,9 @@ class DataStorage(object):
             self.organizations[org['parser_names'].lower()] = org['id']
         logging.warning(f'loaded {len(self.organizations)} organizations')
 
-        # TODO uncoment for parsing votes
-        # for vote in self.parladata_api.get_votes():
-        #     self.votes[self.get_vote_key(vote)] = vote['id']
-        # logging.warning(f'loaded {len(self.votes)} votes')
+        for vote in self.parladata_api.get_votes():
+            self.votes[self.get_vote_key(vote)] = vote['id']
+        logging.warning(f'loaded {len(self.votes)} votes')
 
         for _session in self.parladata_api.get_sessions():
             self.sessions[self.get_session_key(_session)] = {
@@ -79,14 +78,14 @@ class DataStorage(object):
             #TODO workaround for empty DB
             #speeches_count = self.parladata_api.get_session_speech_count(session_id=session['id'])
             speeches_count = 0
+
             self.sessions_speech_count[session['id']] = speeches_count
             if speeches_count > 0:
                 self.sessions_with_speeches.append(speeches_count)
 
-        # TODO uncoment this
-        # for motion in self.parladata_api.get_motions():
-        #     self.motions[self.get_motion_key(motion)] = motion['id'] # TODO check if is key good key
-        # logging.warning(f'loaded {len(self.motions)} motions')
+        for motion in self.parladata_api.get_motions():
+            self.motions[self.get_motion_key(motion)] = motion['id'] # TODO check if is key good key
+        logging.warning(f'loaded {len(self.motions)} motions')
 
         # for item in self.parladata_api.get_agenda_items():
         #     self.agenda_items[self.get_agenda_key(item)] = item['id']

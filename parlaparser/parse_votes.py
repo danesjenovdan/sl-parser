@@ -6,16 +6,8 @@ from datetime import datetime
 
 from parlaparser.settings import BASE_URL
 
-class ParserState(Enum):
-    META = 0
-    PRE_CONTENT = 1
-    NAME = 2
-    CONTENT = 3
-    TRAK = 4
-
-
 class VotesParser(object):
-    def __init__(self, storage, url):
+    def __init__(self, storage):
         self.storage = storage
 
     def parse_votes(self, request_session, htree, session_id):
@@ -94,7 +86,7 @@ class VotesParser(object):
             vote_obj = self.storage.set_vote(vote)
             vote_id = int(vote_obj['id'])
 
-            self.save_balltos(parsed_ballots['ballots'], vote_id)
+            self.save_ballots(parsed_ballots['ballots'], vote_id)
 
             # TODO add links to votes...
             # for link in data['links']:
@@ -187,7 +179,7 @@ class VotesParser(object):
 
         return output
 
-    def save_balltos(self, ballots, vote_id):
+    def save_ballots(self, ballots, vote_id):
         ballots_for_save = []
         for ballot in ballots:
             person_id, added_person = self.storage.get_or_add_person(
