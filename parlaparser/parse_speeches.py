@@ -382,6 +382,7 @@ class SpeechParser(object):
     # save SPEECHES
     def save_speeches(self, start_order, last_added_index=None, session_start_time=None):
         extract_date_reg = r'\((.*?)\)'
+        the_order = 0
 
         if self.date_of_sitting:
             date_string = self.date_of_sitting
