@@ -33,6 +33,8 @@ class SpeechParser(object):
 
     TRACK_CONTINUE_WORDS = ['(nadaljevanje)', '(Nadaljevanje)']
 
+    DEBUG = False
+
     # data
     page_content = []
     meta = []
@@ -40,11 +42,10 @@ class SpeechParser(object):
     current_person = None
     date_of_sitting = None
 
-    def __init__(self, storage, urls, session_id, session_start_time):
+    def __init__(self, storage, urls, session):
         self.urls = urls
         self.storage = storage
-        self.session_id = session_id
-        self.session_start_time = session_start_time
+        self.session = session
 
     def parse(self, parse_new_speeches=False):
         start_order = 0
@@ -69,16 +70,18 @@ class SpeechParser(object):
             self.parse_content(htree)
 
             if parse_new_speeches:
-                last_added_index = self.storage.sessions_speech_count.get(self.session_id, 0)
+                last_added_index = self.session.get_speech_count()
+                print(f'Session has {last_added_index} speeches')
             else:
                 last_added_index = None
 
             print(f'document has {len(self.page_content)} speeches')
-            start_order = self.save_speeches(
-                start_order,
-                last_added_index,
-                self.session_start_time,
-            )
+            if not self.DEBUG:
+                start_order = self.save_speeches(
+                    start_order,
+                    last_added_index,
+                    self.session.start_time,
+                )
             # Dont parse next spech page if cureent isn't valid
             if start_order == None:
                 break
@@ -108,6 +111,13 @@ class SpeechParser(object):
         self.current_text = []
         for line in lines:
             line_tree = html.fromstring(f'<span>{line}</span>')
+
+            if self.DEBUG:
+                print('---')
+                print(line)
+                print(line_tree)
+                print(line_tree.text_content())
+                print()
 
             if self.find_trak(line_tree):
                 continue
@@ -403,17 +413,18 @@ class SpeechParser(object):
             )
             # skip adding speech if has lover order than last_added_index [for sessions in review]
             if last_added_index and order < last_added_index:
+                print('This page is already parsed')
                 continue
 
             if not speech['content']:
                 print(self.page_content)
-                sentry_sdk.capture_message(f'Speech is without content session_id: {self.session_id} person_id: {person_id} the_order: {the_order}')
+                sentry_sdk.capture_message(f'Speech is without content session_id: {self.session.id} person_id: {person_id} the_order: {the_order}')
                 continue
 
             speech_objs.append({
                 'speaker': person_id,
                 'content': speech['content'],
-                'session': self.session_id,
+                'session': self.session.id,
                 'order': the_order,
                 'start_time': start_time.isoformat()
             })
@@ -424,5 +435,5 @@ class SpeechParser(object):
 
 
 if __name__ == '__main__':
-    SpeechParser(TEST_TRANSCRIPT_URL)
+    speech_parser = SpeechParser(TEST_TRANSCRIPT_URL)
 

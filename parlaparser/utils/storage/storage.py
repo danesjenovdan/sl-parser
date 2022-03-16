@@ -1,5 +1,6 @@
 from parlaparser import settings
 from parlaparser.utils.parladata_api import ParladataApi
+from parlaparser.utils.storage.session_storage import SessionStorage
 
 from collections import defaultdict
 from datetime import datetime
@@ -17,11 +18,7 @@ class DataStorage(object):
     organizations = {}
     votes = {}
     motions = {}
-    sessions = {}
-    dz_sessions_by_names = {}
-    sessions_with_speeches = []
-    sessions_speech_count = {}
-    sessions_in_review = []
+
     questions = {}
     legislation = {}
     acts = {}
@@ -41,6 +38,7 @@ class DataStorage(object):
 
     def __init__(self):
         logging.warning(f'Start loading data')
+        self.session_storage = SessionStorage(self)
 
         self.parladata_api = ParladataApi()
         for person in self.parladata_api.get_people():
@@ -56,36 +54,16 @@ class DataStorage(object):
             self.organizations[org['parser_names'].lower()] = org['id']
         logging.warning(f'loaded {len(self.organizations)} organizations')
 
-        for vote in self.parladata_api.get_votes():
-            self.votes[self.get_vote_key(vote)] = vote['id']
-        logging.warning(f'loaded {len(self.votes)} votes')
+        # TODO votes uncomment
+        # for vote in self.parladata_api.get_votes():
+        #     self.votes[self.get_vote_key(vote)] = vote['id']
+        # logging.warning(f'loaded {len(self.votes)} votes')
 
-        for _session in self.parladata_api.get_sessions():
-            self.sessions[self.get_session_key(_session)] = {
-                'id': _session['id'],
-                'start_time': _session['start_time'],
-            }
-            if _session['in_review']:
-                self.sessions_in_review.append(_session['id'])
-            if int(self.main_org_id) in _session['organizations']:
-                self.dz_sessions_by_names[_session['name'].lower()] = _session['id']
-        logging.warning(f'loaded {len(self.sessions)} sessions')
-        logging.warning(f'loaded {self.dz_sessions_by_names.keys()}')
+        #TODO uncomment motions
+        # for motion in self.parladata_api.get_motions():
+        #     self.motions[self.get_motion_key(motion)] = motion['id'] # TODO check if is key good key
+        # logging.warning(f'loaded {len(self.motions)} motions')
 
-        for session in self.sessions.values():
-            if not session['id'] in self.sessions_in_review:
-                continue
-            #TODO workaround for empty DB
-            #speeches_count = self.parladata_api.get_session_speech_count(session_id=session['id'])
-            speeches_count = 0
-
-            self.sessions_speech_count[session['id']] = speeches_count
-            if speeches_count > 0:
-                self.sessions_with_speeches.append(speeches_count)
-
-        for motion in self.parladata_api.get_motions():
-            self.motions[self.get_motion_key(motion)] = motion['id'] # TODO check if is key good key
-        logging.warning(f'loaded {len(self.motions)} motions')
 
         # for item in self.parladata_api.get_agenda_items():
         #     self.agenda_items[self.get_agenda_key(item)] = item['id']
@@ -230,24 +208,24 @@ class DataStorage(object):
         membership = self.parladata_api.set_org_membership(data)
         return membership
 
-    def add_or_get_session(self, data):
-        key = self.get_session_key(data)
-        if key in self.sessions:
-            return self.sessions[key], False
-        else:
-            data.update(mandate=self.mandate_id)
-            session_data = self.parladata_api.set_session(data)
-            self.sessions[key] = session_data['id']
-            print(session_data)
-            if self.main_org_id in session_data['organizations']:
-                self.dz_sessions_by_names[session_data['name'].lower()] = session_data['id']
-            return {
-                'id': session_data['id'],
-                'start_time': session_data['start_time'],
-            }, True
+    # def add_or_get_session(self, data):
+    #     key = self.get_session_key(data)
+    #     if key in self.sessions:
+    #         return self.sessions[key], False
+    #     else:
+    #         data.update(mandate=self.mandate_id)
+    #         session_data = self.parladata_api.set_session(data)
+    #         self.sessions[key] = session_data['id']
+    #         print(session_data)
+    #         if self.main_org_id in session_data['organizations']:
+    #             self.dz_sessions_by_names[session_data['name'].lower()] = session_data['id']
+    #         return {
+    #             'id': session_data['id'],
+    #             'start_time': session_data['start_time'],
+    #         }, True
 
-    def unvalidate_speeches(self, session_id):
-        self.parladata_api.unvalidate_speeches(session_id)
+    # def unvalidate_speeches(self, session_id):
+    #     self.parladata_api.unvalidate_speeches(session_id)
 
     def add_speeches(self, data):
         chunks = [data[x:x+50] for x in range(0, len(data), 50)]
@@ -303,15 +281,15 @@ class DataStorage(object):
     def patch_motion(self, id, data):
         self.parladata_api.patch_motion(id, data)
 
-    def patch_session(self, id, data):
-        self.parladata_api.patch_session(id, data)
+    # def patch_session(self, id, data):
+    #     self.parladata_api.patch_session(id, data)
 
-        # remove session from sessions_in_review if setted to in_review=False
-        if not data.get('in_review', True):
-            self.sessions_in_review.remove(id)
-        # add session to sessions_in_review if setted to in_review=True
-        if data.get('in_review', False):
-            self.sessions_in_review.append(id)
+    #     # remove session from sessions_in_review if setted to in_review=False
+    #     if not data.get('in_review', True):
+    #         self.sessions_in_review.remove(id)
+    #     # add session to sessions_in_review if setted to in_review=True
+    #     if data.get('in_review', False):
+    #         self.sessions_in_review.append(id)
 
     def patch_vote(self, id, data):
         self.parladata_api.patch_vote(id, data)

@@ -2,7 +2,7 @@ from parlaparser.parse_sifrant import parse as parse_sifrant
 from parlaparser.parse_sessions import SessionParser
 from parlaparser.parse_legislation import LegislationParser
 from parlaparser.parse_questions import QuestionParser
-from parlaparser.utils.storage import DataStorage
+from parlaparser.utils.storage.storage import DataStorage
 
 import sentry_sdk
 import os
@@ -24,7 +24,7 @@ storage = DataStorage()
 
 # session votes / speeches
 session_parser = SessionParser(storage)
-session_parser.parse(parse_speeches=False, parse_votes=True)
+session_parser.parse(parse_speeches=True, parse_votes=False)
 
 # use this for parse specific session
 #session_parser.parse(session_number='66', session_type='Izredna', parse_speeches=True, parse_votes=False)

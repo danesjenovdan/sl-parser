@@ -63,19 +63,19 @@ class SessionParser(object):
 
         mandate = 'VIII'
         session_url_groups = [
-            {
-                'url':'https://fotogalerija.dz-rs.si/datoteke/opendata/SDZ.XML',
-                'root_key': 'SDZ',
-                'file_name': 'SDZ.XML',
-                'dz_url': 'https://www.dz-rs.si/wps/portal/Home/seje/izbranaSeja'
-            },
-            # TODO uncoment for parsing WB sessions
+            # TODO uncoment for parsing DZ sessions
             # {
-            #     'url': 'https://fotogalerija.dz-rs.si/datoteke/opendata/SDT.XML',
-            #     'root_key': 'SDT',
-            #     'file_name': 'SDT.XML',
-            #     'dz_url': 'https://www.dz-rs.si/wps/portal/Home/seje/izbranaSejaDt'
-            # }
+            #     'url':'https://fotogalerija.dz-rs.si/datoteke/opendata/SDZ.XML',
+            #     'root_key': 'SDZ',
+            #     'file_name': 'SDZ.XML',
+            #     'dz_url': 'https://www.dz-rs.si/wps/portal/Home/seje/izbranaSeja'
+            # },
+            {
+                'url': 'https://fotogalerija.dz-rs.si/datoteke/opendata/SDT.XML',
+                'root_key': 'SDT',
+                'file_name': 'SDT.XML',
+                'dz_url': 'https://www.dz-rs.si/wps/portal/Home/seje/izbranaSejaDt'
+            }
         ]
         for url_group in session_url_groups:
             response = requests.get(url_group['url'])
@@ -203,7 +203,7 @@ class SessionParser(object):
                     organization_id = self.storage.main_org_id
 
                 # get or add session
-                session_data, session_added = self.storage.add_or_get_session({
+                current_session = self.storage.session_storage.add_or_get_session({
                     'name': f'{session_name}. {session_type_xml.lower()} seja',
                     'organization': organization_id,
                     'organizations': [organization_id],
@@ -214,10 +214,10 @@ class SessionParser(object):
                     'gov_id': session_url,
                     'mandate_id': self.storage.mandate_id
                 })
-                session_id = session_data['id']
-                if session_data['start_time'] != start_time.isoformat():
+                session_id = current_session.id
+                if current_session.start_time != start_time.isoformat():
                     # patch session start_time if is changed on dz page
-                    self.storage.patch_session(session_id, {'start_time': start_time.isoformat()})
+                    self.storage.session_storage.patch_session(current_session, {'start_time': start_time.isoformat()})
 
                 print(f'Getted session: {session_name}. {session_type_xml.lower()} seja has id {session_id}')
 
@@ -225,28 +225,28 @@ class SessionParser(object):
                 parse_new_speeches = False
 
                 # session is reviewed, reload speeches
-                if not session_in_review and (session_id in self.storage.sessions_in_review):
+                if not session_in_review and self.storage.session_storage.is_session_in_review(current_session):
                     # set session to not in review
-                    self.storage.patch_session(session_id, {'in_review': False})
+                    self.storage.session_storage.patch_session(current_session, {'in_review': False})
 
                     # unvalidate speeches
-                    self.storage.unvalidate_speeches(session_id)
+                    current_session.unvalidate_speeches()
 
                     # TODO parse new speeches
                     parse_all_speeches = True
 
-                elif session_in_review and not (session_id in self.storage.sessions_in_review):
+                elif session_in_review and not self.storage.session_storage.is_session_in_review(current_session):
                     # set session to not in review
-                    self.storage.patch_session(session_id, {'in_review': True})
+                    self.storage.session_storage.patch_session(current_session, {'in_review': True})
                     parse_new_speeches = True
 
-                elif session_in_review and (session_id in self.storage.sessions_in_review):
+                elif session_in_review and self.storage.session_storage.is_session_in_review(current_session):
                     parse_new_speeches = True
-                elif session_added:
+                elif current_session.is_new:
                     parse_all_speeches = True
 
 
-                if session_added and document_unids:
+                if current_session.is_new and document_unids:
                     for doc_unid in document_unids:
                         if doc_unid in self.document_keys:
                             document = self.documents[doc_unid]
@@ -261,7 +261,7 @@ class SessionParser(object):
 
                 # parsing VOTES
                 # TODO check, the condition may stink
-                if parse_votes and (session_id in self.storage.sessions_in_review or session_added):
+                if parse_votes and (self.storage.session_storage.is_session_in_review(current_session) or current_session.is_new):
                     vote_parser = VotesParser(self.storage)
                     vote_parser.parse_votes(request_session, session_htree, session_id)
 
@@ -276,7 +276,7 @@ class SessionParser(object):
                     print("speech_unids")
                     print(speech_unids)
 
-                    speech_parser = SpeechParser(self.storage, speech_urls, session_id, session_data['start_time'])
+                    speech_parser = SpeechParser(self.storage, speech_urls, current_session)
                     speech_parser.parse(parse_new_speeches)
 
 
