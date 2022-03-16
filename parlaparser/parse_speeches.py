@@ -421,12 +421,18 @@ class SpeechParser(object):
                 sentry_sdk.capture_message(f'Speech is without content session_id: {self.session.id} person_id: {person_id} the_order: {the_order}')
                 continue
 
+            if isinstance(start_time, str):
+                pass
+            else:
+                start_time = start_time.isoformat()
+
+
             speech_objs.append({
                 'speaker': person_id,
                 'content': speech['content'],
                 'session': self.session.id,
                 'order': the_order,
-                'start_time': start_time.isoformat()
+                'start_time': start_time
             })
         self.storage.add_speeches(speech_objs)
         return the_order
