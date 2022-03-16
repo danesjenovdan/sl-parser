@@ -173,10 +173,9 @@ class SpeechParser(object):
         name_candidate = line_tree.cssselect('b')
         speaker=None
         if name_candidate:
-            name_candidate = name_candidate[0].text.strip()
-
             # check if bolded text is valid person name
             try:
+                name_candidate = name_candidate[0].text.strip()
                 person_line = re.findall(self.FIND_PERSON, name_candidate)
                 mister_or_madam_line = re.findall(self.FIND_MISTER_OR_MADAM, name_candidate)
             except Exception as e:
