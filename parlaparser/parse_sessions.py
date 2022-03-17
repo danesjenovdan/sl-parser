@@ -64,18 +64,18 @@ class SessionParser(object):
         mandate = 'VIII'
         session_url_groups = [
             # TODO uncoment for parsing DZ sessions
-            # {
-            #     'url':'https://fotogalerija.dz-rs.si/datoteke/opendata/SDZ.XML',
-            #     'root_key': 'SDZ',
-            #     'file_name': 'SDZ.XML',
-            #     'dz_url': 'https://www.dz-rs.si/wps/portal/Home/seje/izbranaSeja'
-            # },
             {
-                'url': 'https://fotogalerija.dz-rs.si/datoteke/opendata/SDT.XML',
-                'root_key': 'SDT',
-                'file_name': 'SDT.XML',
-                'dz_url': 'https://www.dz-rs.si/wps/portal/Home/seje/izbranaSejaDt'
-            }
+                'url':'https://fotogalerija.dz-rs.si/datoteke/opendata/SDZ.XML',
+                'root_key': 'SDZ',
+                'file_name': 'SDZ.XML',
+                'dz_url': 'https://www.dz-rs.si/wps/portal/Home/seje/izbranaSeja'
+            },
+            # {
+            #     'url': 'https://fotogalerija.dz-rs.si/datoteke/opendata/SDT.XML',
+            #     'root_key': 'SDT',
+            #     'file_name': 'SDT.XML',
+            #     'dz_url': 'https://www.dz-rs.si/wps/portal/Home/seje/izbranaSejaDt'
+            # }
         ]
         for url_group in session_url_groups:
             response = requests.get(url_group['url'])
@@ -92,7 +92,7 @@ class SessionParser(object):
             for index, session in enumerate(list(reversed(data[url_group['root_key']]['SEJA']))):
                 print()
                 print('New session')
-                print(session['KARTICA_SEJE']['KARTICA_OZNAKA'])
+                #print(session['KARTICA_SEJE']['KARTICA_OZNAKA'])
                 session_name = session['KARTICA_SEJE']['KARTICA_OZNAKA'].lstrip("0")
                 session_type_xml = session['KARTICA_SEJE']['KARTICA_VRSTA']
                 organization_name = session['KARTICA_SEJE']['KARTICA_STATUS']
