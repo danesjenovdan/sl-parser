@@ -1,6 +1,7 @@
 from parlaparser import settings
 from parlaparser.utils.parladata_api import ParladataApi
 from parlaparser.utils.storage.session_storage import SessionStorage
+from parlaparser.utils.storage.legislation_storage import LegislationStorage
 
 from collections import defaultdict
 from datetime import datetime
@@ -16,20 +17,11 @@ class NoneError(Exception):
 class DataStorage(object):
     people = {}
     organizations = {}
-    votes = {}
-    motions = {}
 
     questions = {}
-    legislation = {}
-    acts = {}
+
     agenda_items = {}
     memberships = defaultdict(lambda: defaultdict(list))
-
-    legislation_classifications = {}
-    procedures = {}
-    procedure_phases = {}
-    legislation_considerations = {}
-    legislation_statuses = {}
 
     mandate_start_time = settings.MANDATE_STARTIME
     mandate_id = settings.MANDATE
@@ -38,9 +30,12 @@ class DataStorage(object):
 
     def __init__(self):
         logging.warning(f'Start loading data')
-        self.session_storage = SessionStorage(self)
-
         self.parladata_api = ParladataApi()
+
+        self.session_storage = SessionStorage(self)
+        self.person_storage = None # TODO implement person storage
+
+
         for person in self.parladata_api.get_people():
             if not person['parser_names']:
                 continue
@@ -54,17 +49,6 @@ class DataStorage(object):
             self.organizations[org['parser_names'].lower()] = org['id']
         logging.warning(f'loaded {len(self.organizations)} organizations')
 
-        # TODO votes uncomment
-        # for vote in self.parladata_api.get_votes():
-        #     self.votes[self.get_vote_key(vote)] = vote['id']
-        # logging.warning(f'loaded {len(self.votes)} votes')
-
-        #TODO uncomment motions
-        # for motion in self.parladata_api.get_motions():
-        #     self.motions[self.get_motion_key(motion)] = motion['id'] # TODO check if is key good key
-        # logging.warning(f'loaded {len(self.motions)} motions')
-
-
         # for item in self.parladata_api.get_agenda_items():
         #     self.agenda_items[self.get_agenda_key(item)] = item['id']
         # logging.warning(f'loaded {len(self.agenda_items)} agenda_items')
@@ -73,8 +57,6 @@ class DataStorage(object):
         #     self.questions[self.get_question_key(question)] = {'id': question['id'], 'answer': question['answer_timestamp']}
         # logging.warning(f'loaded {len(self.questions)} questions')
 
-        # for legislation in self.parladata_api.get_legislation():
-        #     self.legislation[legislation['epa']] = legislation
 
         logging.debug(self.people.keys())
         api_memberships = self.parladata_api.get_memberships()
@@ -82,50 +64,10 @@ class DataStorage(object):
             self.memberships[membership['organization']][membership['member']].append(membership)
         logging.warning(f'loaded {len(api_memberships)} memberships')
 
-        # TODO uncoment this
-        # api_legislation_classifications = self.parladata_api.get_legislation_classifications()
-        # for legislation_classification in api_legislation_classifications:
-        #     self.legislation_classifications[legislation_classification['name']] = legislation_classification['id']
-
-        # api_procedures = self.parladata_api.get_procedures()
-
-        # for procedure in api_procedures:
-        #     self.procedures[procedure['type']] = procedure['id']
-
-        # api_procedure_phases = self.parladata_api.get_procedure_phases()
-        # for procedure_phase in api_procedure_phases:
-        #     self.procedure_phases[procedure_phase['name']] = procedure_phase
-
-        # api_legislation_considerations = self.parladata_api.get_legislation_consideration()
-        # for legislation_consideration in api_legislation_considerations:
-        #     self.legislation_considerations[self.get_legislation_consideration_key(legislation_consideration)] = legislation_consideration['id']
-
-        # api_legislation_statuses = self.parladata_api.get_legislation_statuses()
-        # for legislation_status in api_legislation_statuses:
-        #     self.legislation_statuses[legislation_status['name']] = legislation_status['id']
 
 
 
-    def get_vote_key(self, vote):
-        if vote['name'] == None:
-            raise NoneError
-        return (vote['name']).strip().lower()
-
-    def get_motion_key(self, motion):
-        return (motion['gov_id'] if motion['gov_id'] else '').strip().lower()
-
-    def get_session_key(self, session):
-        return session['gov_id'].strip().lower()
-
-    def get_question_key(self, question):
-        return question['gov_id'].strip().lower()
-
-    def get_agenda_key(self, agenda_item):
-        return (agenda_item['name'] + '_' + agenda_item['datetime']).strip().lower()
-
-    def get_legislation_consideration_key(self, legislation_consideration):
-        return f'{legislation_consideration["timestamp"]}_{legislation_consideration["legislation"]}_{legislation_consideration["procedure_phase"]}'
-
+    
     def get_id_by_parsername(self, object_type, name):
         """
         """
@@ -197,48 +139,8 @@ class DataStorage(object):
     def get_or_add_organization(self, name, data_object):
         return self.get_or_add_object_by_parsername('organizations', name, data_object, True)
 
-    def add_membership(self, data):
-        membership = self.parladata_api.set_membership(data)
-        if data['role'] == 'voter':
-            logging.warning(membership)
-            self.memberships[membership['organization']][membership['member']].append(membership)
-        return membership
 
-    def add_org_membership(self, data):
-        membership = self.parladata_api.set_org_membership(data)
-        return membership
-
-    # def add_or_get_session(self, data):
-    #     key = self.get_session_key(data)
-    #     if key in self.sessions:
-    #         return self.sessions[key], False
-    #     else:
-    #         data.update(mandate=self.mandate_id)
-    #         session_data = self.parladata_api.set_session(data)
-    #         self.sessions[key] = session_data['id']
-    #         print(session_data)
-    #         if self.main_org_id in session_data['organizations']:
-    #             self.dz_sessions_by_names[session_data['name'].lower()] = session_data['id']
-    #         return {
-    #             'id': session_data['id'],
-    #             'start_time': session_data['start_time'],
-    #         }, True
-
-    # def unvalidate_speeches(self, session_id):
-    #     self.parladata_api.unvalidate_speeches(session_id)
-
-    def add_speeches(self, data):
-        chunks = [data[x:x+50] for x in range(0, len(data), 50)]
-        print(f'Adding {len(chunks)} speech chunks')
-        for chunk in chunks:
-            self.parladata_api.set_speeches(chunk)
-
-    def set_ballots(self, data):
-        added_ballots = self.parladata_api.set_ballots(data)
-
-    def set_motion(self, data):
-        added_motion = self.parladata_api.set_motion(data)
-        return added_motion
+    # agenda items
 
     def get_or_add_agenda_item(self, data):
         logging.warning(self.get_agenda_key(data))
@@ -249,61 +151,40 @@ class DataStorage(object):
             added_agenda_item = self.parladata_api.set_agenda_item(data)
             return added_agenda_item['id']
 
-    def set_legislation_consideration(self, data):
-        legislation_consideration = self.parladata_api.set_legislation_consideration(data).json()
-        self.legislation_considerations[self.get_legislation_consideration_key(legislation_consideration)] = legislation_consideration
-        return legislation_consideration
+    def get_agenda_key(self, agenda_item):
+        return (agenda_item['name'] + '_' + agenda_item['datetime']).strip().lower()
 
-    def check_if_motion_is_parsed(self, motion):
-        key = self.get_motion_key(motion)
-        return key in self.motions.keys()
 
-    def check_if_question_is_parsed(self, question):
-        key = self.get_question_key(question)
-        return key in self.questions.keys()
-
-    def set_vote(self, data):
-        added_vote = self.parladata_api.set_vote(data)
-        return added_vote
+    # area
 
     def set_area(self, data):
         added_area = self.parladata_api.set_area(data)
         return added_area.json()
 
+    # questions
+
     def set_question(self, data):
         added_question = self.parladata_api.set_question(data)
         return added_question
+
+    def check_if_question_is_parsed(self, question):
+        key = self.get_question_key(question)
+        return key in self.questions.keys()
+
+    def get_question_key(self, question):
+        return question['gov_id'].strip().lower()
+
+
+    # links
 
     def set_link(self, data):
         added_link = self.parladata_api.set_link(data)
         return added_link
 
-    def patch_motion(self, id, data):
-        self.parladata_api.patch_motion(id, data)
-
-    # def patch_session(self, id, data):
-    #     self.parladata_api.patch_session(id, data)
-
-    #     # remove session from sessions_in_review if setted to in_review=False
-    #     if not data.get('in_review', True):
-    #         self.sessions_in_review.remove(id)
-    #     # add session to sessions_in_review if setted to in_review=True
-    #     if data.get('in_review', False):
-    #         self.sessions_in_review.append(id)
-
-    def patch_vote(self, id, data):
-        self.parladata_api.patch_vote(id, data)
-
-    def patch_legislation(self, id, data):
-        self.parladata_api.patch_legislation(id, data)
+    # memberships
 
     def patch_memberships(self, id, data):
         self.parladata_api.patch_memberships(id, data)
-
-    def set_legislation(self, data):
-        added_legislation = self.parladata_api.set_legislation(data)
-        self.legislation[added_legislation['epa']] = added_legislation
-        return added_legislation
 
     def is_membership_parsed(self, person_id, org_id, role):
         if not org_id in self.memberships.keys():
@@ -331,3 +212,14 @@ class DataStorage(object):
                     else:
                         return mem['on_behalf_of']
         return None
+
+    def add_membership(self, data):
+        membership = self.parladata_api.set_membership(data)
+        if data['role'] == 'voter':
+            logging.warning(membership)
+            self.memberships[membership['organization']][membership['member']].append(membership)
+        return membership
+
+    def add_org_membership(self, data):
+        membership = self.parladata_api.set_org_membership(data)
+        return membership

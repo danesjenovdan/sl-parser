@@ -11,10 +11,13 @@ from enum import Enum
 
 from parlaparser.settings import BASE_URL
 from parlaparser.utils.methods import get_values
+from parlaparser.utils.storage.legislation_storage import LegislationStorage
 
 
 class LegislationParser(object):
     def __init__(self, storage):
+        self.legislation_storage =  LegislationStorage(storage)
+        #self.legislation_storage.load_data()
         self.storage = storage
         locale.setlocale(locale.LC_TIME, "sl_SI")
         self.documents = {}
@@ -49,7 +52,7 @@ class LegislationParser(object):
             # },
             {
                 'url': 'https://fotogalerija.dz-rs.si/datoteke/opendata/PZ8.XML',
-                'type': 'legislation',
+                'type': 'law',
                 'file_name': 'PZ8.XML',
                 'xml_key': 'PZ',
             },
@@ -146,7 +149,7 @@ class LegislationParser(object):
                         'epa': epa,
                         'uid': unid,
                         'timestamp': date_iso,
-                        'classification': self.storage.legislation_classifications.get(legislation_file['type'], None)
+                        'classification': self.legislation_storage.get_legislation_classifications_id(legislation_file['type'])
                     },
                     document_unids
                 )
@@ -160,78 +163,29 @@ class LegislationParser(object):
                 }
                 if legislation_session:
                     print(legislation_session)
-                    session_id = self.storage.dz_sessions_by_names.get(legislation_session, None)
+                    session_id = self.storage.session_storage.get_session_by_name(legislation_session)
                     if session_id:
                         data.update(session=session_id)
                 try:
+                    legislation_consideration = self.legislation_storage.prepare_and_set_legislation_consideration(data)
                     self.set_legislation_consideration(
-                        data,
-                        document_unids
+                        data
                     )
+                    if legislation_consideration.is_new:
+                        self.add_docs(
+                            document_unids,
+                            {
+                                'legislation_consideration': legislation_consideration.id
+                            }
+                        )
                 except:
                     pass
 
-    def set_legislation_consideration(self, legislation_consideration, document_unids):
-        epa = legislation_consideration['epa']
-        if epa in self.storage.legislation.keys():
-            legislation_id = self.storage.legislation[epa]['id']
-
-            try:
-                procedure_phase_id = self.storage.procedure_phases[legislation_consideration.pop('consideration_phase')]['id']
-            except Exception as err:
-                sentry_sdk.capture_exception(err)
-                return
-            organization_name = legislation_consideration['organization']
-
-            if organization_name:
-                organization_id, added = self.storage.get_or_add_organization(
-                    organization_name,
-                    {
-                        'name': organization_name,
-                        'parser_names': organization_name,
-                    },
-                )
-            else:
-                organization_id = None
-            legislation_consideration.update({
-                'organization': organization_id,
-                'procedure_phase': procedure_phase_id,
-                'legislation': legislation_id
-            })
-
-            legislation_consideration_key = self.storage.get_legislation_consideration_key(legislation_consideration)
-            if not legislation_consideration_key in self.storage.legislation_considerations.keys():
-                legislation_consideration_obj = self.storage.set_legislation_consideration(
-                    legislation_consideration
-                )
-                self.add_docs(document_unids, {'legislation_consideration': legislation_consideration_obj['id']})
-                # when patch don't add documents...
-        else:
-            print('Legislation of this consideration does not parserd')
-
-
 
     def add_or_update_legislation(self, legislation_obj, document_unids):
-        epa = legislation_obj['epa']
-        if epa in self.storage.legislation.keys():
-            legislation_obj.pop('epa')
-            if self.storage.legislation[epa]['text']:
-                pass
-                # legislation already exists with text
-            else:
-                print('nima texta')
-                legislation_id = self.storage.legislation[epa]['id']
-
-                self.storage.patch_legislation(
-                    legislation_id,
-                    legislation_obj
-                )
-                # when patch don't add documents...
-        else:
-            legislation_obj = self.storage.set_legislation(
-                legislation_obj
-            )
-            self.add_docs(document_unids, {'legislation': legislation_obj['id']})
+        law = self.legislation_storage.update_or_add_law(legislation_obj)
+        if law.is_new:
+            self.add_docs(document_unids, {'legislation': law.id})
 
 
     def add_docs(self, document_unids, document_parent_object):

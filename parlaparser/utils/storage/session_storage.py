@@ -1,17 +1,23 @@
 from parlaparser.utils.parladata_api import ParladataApi
+from parlaparser.utils.storage.vote_storage import VoteStorage
 
 
 class Session(object):
     def __init__(self, name, gov_id, id, organizations, start_time, is_new, in_review) -> None:
+        self.parladata_api = ParladataApi()
+
+        # session members
         self.id = id
         self.name = name
         self.organizations = organizations
         self.count = None
         self.start_time = start_time
         self.gov_id = gov_id
-        self.parladata_api = ParladataApi()
         self.is_new = is_new
         self.in_review = in_review
+
+        # session children
+        self.vote_storage = None
 
     def get_key(self) -> str:
         return self.gov_id.strip().lower()
@@ -27,6 +33,17 @@ class Session(object):
 
     def unvalidate_speeches(self):
         self.parladata_api.unvalidate_speeches(self.id)
+
+    def load_votes(self):
+        self.vote_storage = VoteStorage(self)
+
+    def add_speeches(self, data):
+        chunks = [data[x:x+50] for x in range(0, len(data), 50)]
+        print(f'Adding {len(chunks)} speech chunks')
+        for chunk in chunks:
+            self.parladata_api.set_speeches(chunk)
+
+
 
 class SessionStorage(object):
     def __init__(self, core_storage) -> None:
@@ -46,6 +63,7 @@ class SessionStorage(object):
                 in_review=session['in_review']
             )
             self.sessions[temp_session.get_key()] = temp_session
+            self.dz_sessions_by_names[session['name'].lower()] = temp_session
             if temp_session.in_review:
                 self.sessions_in_review.append(temp_session)
 
@@ -87,3 +105,6 @@ class SessionStorage(object):
 
     def is_session_in_review(self, session):
         return session in self.sessions_in_review
+
+    def get_session_by_name(self, name):
+        return self.dz_sessions_by_names.get(name.lower(), None)

@@ -7,10 +7,11 @@ from datetime import datetime
 from parlaparser.settings import BASE_URL
 
 class VotesParser(object):
-    def __init__(self, storage):
-        self.storage = storage
+    def __init__(self, session):
+        self.session = session
+        self.storage = session.storage
 
-    def parse_votes(self, request_session, htree, session_id):
+    def parse_votes(self, request_session, htree):
         lines = htree.cssselect('form>div>table>tbody>tr')
         for line in lines:
             columns = line.cssselect('td')
@@ -29,7 +30,7 @@ class VotesParser(object):
             uid = parse.parse_qs(parse.urlsplit(ballots_url).query)['uid'][0]
 
 
-            if self.storage.check_if_motion_is_parsed({'gov_id': uid}):
+            if self.session.vote_storage.check_if_motion_is_parsed({'gov_id': uid}):
                 print('this vote is already parsed')
                 continue
 
@@ -66,7 +67,7 @@ class VotesParser(object):
                 'title': title,
                 'text': title,
                 'datetime': start_time.isoformat(),
-                'session': session_id,
+                'session': self.session.id,
                 'gov_id': uid
             }
             if legislation_id:
@@ -74,16 +75,16 @@ class VotesParser(object):
             vote = {
                 'name': title,
                 'timestamp': start_time.isoformat(),
-                'session': session_id,
+                'session': self.session.id,
             }
-            motion_obj = self.storage.set_motion(motion)
+            motion_obj = self.session.vote_storage.set_motion(motion)
             try:
                 motion_id = motion_obj['id']
             except:
                 # skip adding vote because adding motion was fail
                 continue
             vote['motion'] = motion_id
-            vote_obj = self.storage.set_vote(vote)
+            vote_obj = self.session.vote_storage.set_vote(vote)
             vote_id = int(vote_obj['id'])
 
             self.save_ballots(parsed_ballots['ballots'], vote_id)
@@ -128,7 +129,7 @@ class VotesParser(object):
 
             response = request_session.post(url, data=payload)
             session_htree = html.fromstring(response.content)
-            self.parse_votes(request_session, session_htree, session_id)
+            self.parse_votes(request_session, session_htree, self.session.id)
 
 
 
@@ -203,4 +204,4 @@ class VotesParser(object):
                 'option': person_option,
                 'vote': vote_id
             })
-        self.storage.set_ballots(ballots_for_save)
+        self.session.vote_storage.set_ballots(ballots_for_save)

@@ -75,8 +75,12 @@ class ParladataApi(object):
     def get_sessions(self):
         return self._get_objects('sessions')
 
-    def get_motions(self):
-        return self._get_objects('motions')
+    def get_motions(self, session=None):
+        if session:
+            endpoint = f'motions?session={session}'
+        else:
+            endpoint = 'motions'
+        return self._get_objects(endpoint)
 
     def get_agenda_items(self):
         return self._get_objects('agenda-items')

@@ -262,8 +262,8 @@ class SessionParser(object):
                 # parsing VOTES
                 # TODO check, the condition may stink
                 if parse_votes and (self.storage.session_storage.is_session_in_review(current_session) or current_session.is_new):
-                    vote_parser = VotesParser(self.storage)
-                    vote_parser.parse_votes(request_session, session_htree, session_id)
+                    vote_parser = VotesParser(session)
+                    vote_parser.parse_votes(request_session, session_htree)
 
                 # parsing SPEECHES
                 print("parse speeches?: ", parse_speeches, parse_all_speeches, parse_new_speeches)
