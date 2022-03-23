@@ -1,0 +1,8 @@
+* beri iz govora kdaj je konec seje.
+* lahko potem zgeneriramo TFIDF ko pride konec seje
+* lahko se potem unvaldiira govore pa nanovo sparsa?
+
+
+* storage naredi lazy za stvari, ki jih ne rabiš nujno že na ztačetku.
+* morda si naredi svoj class za vsak(session, vote, person) storage posebi
+* vote mogoč nalovdi samo za sejo ki jo rabiš
