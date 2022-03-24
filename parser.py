@@ -24,7 +24,7 @@ storage = DataStorage()
 
 # session votes / speeches
 session_parser = SessionParser(storage)
-session_parser.parse(parse_speeches=True, parse_votes=True)
+session_parser.parse(parse_speeches=False, parse_votes=True)
 
 # use this for parse specific session
 #session_parser.parse(session_number='12', session_type='Izredna', parse_speeches=True, parse_votes=True)
