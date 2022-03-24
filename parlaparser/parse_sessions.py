@@ -273,7 +273,10 @@ class SessionParser(object):
                     start_order = 0
                     speech_urls = []
                     for orginal_speech_unid in speech_unids:
-                        speech_urls.append(self.magnetograms[orginal_speech_unid])
+                        try:
+                            speech_urls.append(self.magnetograms[orginal_speech_unid])
+                        except:
+                            pass
 
                     print("speech_unids")
                     print(speech_unids)
