@@ -224,8 +224,10 @@ class SessionParser(object):
                 parse_all_speeches = False
                 parse_new_speeches = False
 
+                was_session_in_review = self.storage.session_storage.is_session_in_review(current_session)
+
                 # session is reviewed, reload speeches
-                if not session_in_review and self.storage.session_storage.is_session_in_review(current_session):
+                if not session_in_review and was_session_in_review:
                     # set session to not in review
                     self.storage.session_storage.patch_session(current_session, {'in_review': False})
 
@@ -236,12 +238,12 @@ class SessionParser(object):
                     # TODO parse new speeches
                     parse_all_speeches = True
 
-                elif session_in_review and not self.storage.session_storage.is_session_in_review(current_session):
+                elif session_in_review and not was_session_in_review:
                     # set session to not in review
                     self.storage.session_storage.patch_session(current_session, {'in_review': True})
                     parse_new_speeches = True
 
-                elif session_in_review and self.storage.session_storage.is_session_in_review(current_session):
+                elif session_in_review and was_session_in_review:
                     parse_new_speeches = True
                 elif current_session.is_new:
                     parse_all_speeches = True
@@ -262,8 +264,8 @@ class SessionParser(object):
 
                 # parsing VOTES
                 # TODO check, the condition may stink
-                print(f'parse votes {parse_votes} {self.storage.session_storage.is_session_in_review(current_session)} {current_session.is_new}')
-                if parse_votes and (self.storage.session_storage.is_session_in_review(current_session) or current_session.is_new):
+                print(f'parse votes {parse_votes} {was_session_in_review} {current_session.is_new}')
+                if parse_votes and (was_session_in_review or current_session.is_new):
                     vote_parser = VotesParser(self.storage, current_session)
                     vote_parser.parse_votes(request_session, session_htree)
 
