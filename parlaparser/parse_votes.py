@@ -3,13 +3,16 @@ from lxml import html
 from enum import Enum
 from urllib import parse
 from datetime import datetime
+import sentry_sdk
 
 from parlaparser.settings import BASE_URL
 
 class VotesParser(object):
-    def __init__(self, session):
+    def __init__(self, storage, session):
         self.session = session
-        self.storage = session.storage
+        self.storage = storage
+        self.session.load_votes()
+        self.storage.legislation_storage.load_data()
 
     def parse_votes(self, request_session, htree):
         lines = htree.cssselect('form>div>table>tbody>tr')
@@ -55,13 +58,13 @@ class VotesParser(object):
 
             legislation_id = None
             if epa:
-                if epa in self.storage.legislation.keys():
-                    legislation_id = self.storage.legislation[epa]['id']
+                if self.storage.legislation_storage.is_law_parsed(epa):
+                    legislation_id = self.storage.legislation_storage.legislation[epa].id
                 else:
-                    legislation = self.storage.set_legislation({
+                    legislation = self.storage.legislation_storage.set_law({
                         'epa': epa
                     })
-                    legislation_id = legislation['id']
+                    legislation_id = legislation.id
 
             motion = {
                 'title': title,
@@ -79,9 +82,10 @@ class VotesParser(object):
             }
             motion_obj = self.session.vote_storage.set_motion(motion)
             try:
-                motion_id = motion_obj['id']
-            except:
+                motion_id = motion_obj.id
+            except Exception as e:
                 # skip adding vote because adding motion was fail
+                sentry_sdk.capture_exception(e)
                 continue
             vote['motion'] = motion_id
             vote_obj = self.session.vote_storage.set_vote(vote)
@@ -129,7 +133,7 @@ class VotesParser(object):
 
             response = request_session.post(url, data=payload)
             session_htree = html.fromstring(response.content)
-            self.parse_votes(request_session, session_htree, self.session.id)
+            self.parse_votes(request_session, session_htree)
 
 
 

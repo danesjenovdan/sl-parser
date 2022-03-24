@@ -33,6 +33,7 @@ class DataStorage(object):
         self.parladata_api = ParladataApi()
 
         self.session_storage = SessionStorage(self)
+        self.legislation_storage = LegislationStorage(self)
         self.person_storage = None # TODO implement person storage
 
 

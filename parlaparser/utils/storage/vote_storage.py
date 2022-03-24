@@ -20,11 +20,12 @@ from parlaparser.utils.parladata_api import ParladataApi
 #         return (data['name']).strip().lower()
 
 class Motion(object):
-    def __init__(self, id, epa, session, timestamp, gov_id, is_new) -> None:
+    def __init__(self, id, text, session, datetime, gov_id, is_new) -> None:
         self.id = id
-        self.epa = epa
+        #self.epa = epa
+        self.text = text
         self.session = session
-        self.timestamp = timestamp
+        self.datetime = datetime
         self.gov_id = gov_id
         self.is_new = is_new
 
@@ -44,11 +45,11 @@ class VoteStorage(object):
 
         for motion in self.parladata_api.get_motions(session=session.id):
             temp_motion =Motion(
-                name=motion['text'],
-                epa=motion['epa'],
+                text=motion['text'],
                 id=motion['id'],
                 session=motion['session'],
-                timestamp = motion['timestamp'],
+                gov_id=motion['gov_id'],
+                datetime = motion['datetime'],
                 is_new=False,
             )
             self.motions[temp_motion.get_key()] = temp_motion
@@ -66,15 +67,15 @@ class VoteStorage(object):
     def set_motion(self, data):
         added_motion = self.parladata_api.set_motion(data)
         motion =Motion(
-            name=motion['name'],
-            epa=motion['epa'],
-            id=motion['id'],
-            session=motion['session'],
-            timestamp = motion['timestamp'],
+            text=added_motion['text'],
+            id=added_motion['id'],
+            session=added_motion['session'],
+            gov_id=added_motion['gov_id'],
+            datetime = added_motion['datetime'],
             is_new=False,
         )
         self.motions[motion.get_key()] = motion
-        return added_motion
+        return motion
 
     def patch_motion(self, motion, data):
         self.parladata_api.patch_motion(motion.id, data)

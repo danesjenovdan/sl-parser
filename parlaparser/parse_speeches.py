@@ -434,7 +434,7 @@ class SpeechParser(object):
                 'order': the_order,
                 'start_time': start_time
             })
-        self.storage.add_speeches(speech_objs)
+        self.session.add_speeches(speech_objs)
         return the_order
 
 

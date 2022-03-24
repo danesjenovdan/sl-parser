@@ -229,8 +229,9 @@ class SessionParser(object):
                     # set session to not in review
                     self.storage.session_storage.patch_session(current_session, {'in_review': False})
 
-                    # unvalidate speeches
-                    current_session.unvalidate_speeches()
+                    if parse_speeches:
+                        # unvalidate speeches
+                        current_session.unvalidate_speeches()
 
                     # TODO parse new speeches
                     parse_all_speeches = True
@@ -261,8 +262,9 @@ class SessionParser(object):
 
                 # parsing VOTES
                 # TODO check, the condition may stink
+                print(f'parse votes {parse_votes} {self.storage.session_storage.is_session_in_review(current_session)} {current_session.is_new}')
                 if parse_votes and (self.storage.session_storage.is_session_in_review(current_session) or current_session.is_new):
-                    vote_parser = VotesParser(session)
+                    vote_parser = VotesParser(self.storage, current_session)
                     vote_parser.parse_votes(request_session, session_htree)
 
                 # parsing SPEECHES

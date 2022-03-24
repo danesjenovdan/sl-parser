@@ -89,9 +89,13 @@ class LegislationStorage(object):
         self.procedure_phases_by_id = {}
         self.legislation_considerations = {}
 
-        self.load_data()
-
     def load_data(self):
+        """
+        load legislation if not loaded
+        """
+        if self.legislation:
+            return
+        print('Load legislation')
         for legislation_classification in self.parladata_api.get_legislation_classifications():
             classification = LegislationClassification(
                 id=legislation_classification['id'],

@@ -35,6 +35,7 @@ class Session(object):
         self.parladata_api.unvalidate_speeches(self.id)
 
     def load_votes(self):
+        print('loading_votes')
         self.vote_storage = VoteStorage(self)
 
     def add_speeches(self, data):
