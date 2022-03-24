@@ -16,9 +16,9 @@ from parlaparser.utils.storage.legislation_storage import LegislationStorage
 
 class LegislationParser(object):
     def __init__(self, storage):
+        self.storage = storage
         self.legislation_storage =  self.storage.legislation_storage
         self.legislation_storage.load_data()
-        self.storage = storage
         locale.setlocale(locale.LC_TIME, "sl_SI")
         self.documents = {}
 
