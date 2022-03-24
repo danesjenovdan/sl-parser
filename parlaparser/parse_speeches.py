@@ -31,6 +31,8 @@ class SpeechParser(object):
     FIND_END_OF_SESSION = r'\(SEJA JE .{3,10} PREKINJENA .{10,35}\)|(^Seja .{5,10} konča)'
     SKIP_SESSION_PAUSE = r'\(Seja je bila prekinjena.{5,15} se je nadaljevala.{5,15}\)'
 
+    START_AT_REGEX = r'(?:pri|za)č[ea]la?\s+(?:ob\s*)?(\d{1,2})[.:]\s*(?:(\d{2})|uri|0)'
+
     TRACK_CONTINUE_WORDS = ['(nadaljevanje)', '(Nadaljevanje)']
 
     DEBUG = False
@@ -42,14 +44,17 @@ class SpeechParser(object):
     current_person = None
     date_of_sitting = None
 
-    def __init__(self, storage, urls, session):
+    def __init__(self, storage, urls, session, start_date):
         self.urls = urls
         self.storage = storage
         self.session = session
+        self.start_date = start_date
+        self.session_start_time = None
 
     def parse(self, parse_new_speeches=False):
         start_order = 0
-        for url in self.urls:
+        for idx, url in enumerate(self.urls):
+            self.page_idx = idx
             print(f'Parsing speeches from url: {url}')
             self.page_content = []
             self.meta = []
@@ -131,6 +136,20 @@ class SpeechParser(object):
                     line.startswith('Besedilo je objavljeno') or
                     re.search(self.REGEX_START_WIERD_WB_SESSION, line, re.IGNORECASE)):
                     self.state = ParserState.PRE_CONTENT
+                    if self.page_idx == 0:
+                        time = self.get_time_from_line(line)
+                        print(time)
+                        if time:
+                            try:
+                                hour, minute = time.split(':')
+                                self.start_time = self.start_date.replace(hour=int(hour), minute=int(minute))
+                                if self.session.start_time != self.start_time.isoformat():
+                                    # print(fix)
+                                    self.session.update_time(self.start_time)
+                            except Exception as e:
+                                print(e)
+                                pass
+
 
             elif self.state == ParserState.NAME:
                 self.parse_person_line(line_tree)
@@ -437,6 +456,16 @@ class SpeechParser(object):
         self.session.add_speeches(speech_objs)
         return the_order
 
+    def get_time_from_match(self, match):
+        hour, minute = match.group(1, 2)
+        if minute is None:
+            minute = '00'
+        return f'{hour}:{minute}'
+
+    def get_time_from_line(self, line):
+        match = re.search(self.START_AT_REGEX, line, re.IGNORECASE)
+        if match:
+            return self.get_time_from_match(match)
 
 
 

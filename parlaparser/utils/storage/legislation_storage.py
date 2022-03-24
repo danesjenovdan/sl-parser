@@ -4,10 +4,11 @@ import sentry_sdk
 
 
 class Law(object):
-    def __init__(self, id, epa, text, timestamp, uid, is_new) -> None:
+    def __init__(self, id, epa, text, timestamp, uid, classification, is_new) -> None:
         self.id = id
         self.epa = epa
         self.text = text
+        self.classification = classification
         self.timestamp = timestamp
         self.uid = uid
         self.is_new = is_new
@@ -130,6 +131,7 @@ class LegislationStorage(object):
             epa=law_dict['epa'],
             text=law_dict['text'],
             timestamp=law_dict['timestamp'],
+            classification=law_dict.get('classification', None),
             uid=law_dict['uid'],
             is_new=is_new
         )
@@ -178,7 +180,7 @@ class LegislationStorage(object):
         epa = law_data['epa'].lower().strip()
         if epa in self.legislation.keys():
             law = self.legislation[epa]
-            if law.text == None or law.text == '':
+            if law.text == None or law.text == '' or law.classification == None:
                 law = self.patch_law(law, law_data)
         else:
             print(f'Adding new legislation with epa:{epa}!')

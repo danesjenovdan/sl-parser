@@ -44,6 +44,14 @@ class Session(object):
         for chunk in chunks:
             self.parladata_api.set_speeches(chunk)
 
+    def update_time(self, timestamp):
+        self.parladata_api.patch_session(
+            self.id,
+            {'start_time': timestamp.isoformat()}
+        )
+        print(timestamp.isoformat())
+        self.start_time = timestamp.isoformat()
+
 
 
 class SessionStorage(object):

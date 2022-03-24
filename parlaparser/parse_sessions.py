@@ -215,9 +215,9 @@ class SessionParser(object):
                     'mandate_id': self.storage.mandate_id
                 })
                 session_id = current_session.id
-                if current_session.start_time != start_time.isoformat():
-                    # patch session start_time if is changed on dz page
-                    self.storage.session_storage.patch_session(current_session, {'start_time': start_time.isoformat()})
+                #if current_session.start_time != start_time.isoformat():
+                #    # patch session start_time if is changed on dz page
+                #    self.storage.session_storage.patch_session(current_session, {'start_time': start_time.isoformat()})
 
                 print(f'Getted session: {session_name}. {session_type_xml.lower()} seja has id {session_id}')
 
@@ -283,7 +283,7 @@ class SessionParser(object):
                     print("speech_unids")
                     print(speech_unids)
 
-                    speech_parser = SpeechParser(self.storage, speech_urls, current_session)
+                    speech_parser = SpeechParser(self.storage, speech_urls, current_session, start_time)
                     speech_parser.parse(parse_new_speeches)
 
 

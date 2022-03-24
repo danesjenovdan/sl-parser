@@ -215,6 +215,7 @@ class ParladataApi(object):
             data = response.json()
         except:
             logger.warning(response.content)
+            return {}
         return data
 
     def patch_legislation(self, id, data):
