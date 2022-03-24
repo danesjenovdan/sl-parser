@@ -168,9 +168,6 @@ class LegislationParser(object):
                         data.update(session=session_id)
                 try:
                     legislation_consideration = self.legislation_storage.prepare_and_set_legislation_consideration(data)
-                    self.set_legislation_consideration(
-                        data
-                    )
                     if legislation_consideration.is_new:
                         self.add_docs(
                             document_unids,

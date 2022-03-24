@@ -196,8 +196,7 @@ class LegislationStorage(object):
         return legislation_classifications.id
 
     def prepare_and_set_legislation_consideration(self, legislation_consideration):
-        # WIP
-        epa = legislation_consideration['epa']
+        epa = legislation_consideration['epa'].lower().strip()
         if epa in self.legislation.keys():
             law = self.legislation[epa]
             phase_key = ProcedurePhase.get_key_from_dict({'name': legislation_consideration.pop('consideration_phase')})
