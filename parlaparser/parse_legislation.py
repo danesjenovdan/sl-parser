@@ -69,6 +69,21 @@ class LegislationParser(object):
             #     'xml_key': 'SA',
             # }
         ]
+        result_urls= [
+            {
+                'url': 'https://fotogalerija.dz-rs.si/datoteke/opendata/SZ.XML',
+                'type': 'law',
+                'file_name': 'SZ.XML',
+                'xml_key': 'SZ',
+            },
+            {
+                'url': 'https://fotogalerija.dz-rs.si/datoteke/opendata/SA.XML',
+                'type': 'act',
+                'file_name': 'SA.XML',
+                'xml_key': 'SA',
+            },
+        ]
+        urls = []
         for legislation_file in urls:
             print('parse file: ', legislation_file["file_name"])
             response = requests.get(legislation_file['url'])
@@ -81,6 +96,15 @@ class LegislationParser(object):
             self.load_documents(data, legislation_file['xml_key'])
             self.parse_xml_data(data, legislation_file, array_key='PREDPIS', obj_key='KARTICA_PREDPISA')
             self.parse_xml_data(data, legislation_file, array_key='OBRAVNAVA_PREDPISA', obj_key='KARTICA_OBRAVNAVE_PREDPISA')
+
+        for enacted_law in result_urls:
+            print('parse file: ', enacted_law["file_name"])
+            response = requests.get(enacted_law['url'])
+            with open(f'/tmp/{enacted_law["file_name"]}', 'wb') as f:
+                f.write(response.content)
+            with open(f'/tmp/{enacted_law["file_name"]}', 'rb') as data_file:
+                data = xmltodict.parse(data_file, dict_constructor=dict)
+            self.parser_results_xml(data, enacted_law, array_key='PREDPIS', obj_key='KARTICA_PREDPISA')
 
 
     def get_procedured(data, legislation_file, array_key, obj_key):
@@ -138,6 +162,7 @@ class LegislationParser(object):
                 connected_legislation = wraped_legislation.get('POVEZANI_PREDPISI', [])
                 connected_legislation_unids = get_values(connected_legislation)
             except Exception as e:
+                print('Boooooo')
                 print(legislation)
                 print(e)
                 continue
@@ -177,6 +202,24 @@ class LegislationParser(object):
                         )
                 except:
                     pass
+
+    def parser_results_xml(self, data, legislation_file, array_key, obj_key):
+        try:
+            legislation_list = data[legislation_file['xml_key']][array_key]
+        except:
+            print(legislation_file)
+            print(data.keys())
+            raise Exception()
+
+        for wraped_legislation in legislation_list:
+            legislation = wraped_legislation[obj_key]
+            epa = self.remove_leading_zeros(legislation['KARTICA_EPA'])
+            mandat = legislation['KARTICA_MANDAT']
+            if 'VIII' in epa:
+                self.legislation_storage.set_law_as_enacted(
+                    epa=epa
+                )
+
 
 
     def add_or_update_legislation(self, legislation_obj, document_unids):

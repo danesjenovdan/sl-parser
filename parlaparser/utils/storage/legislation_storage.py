@@ -4,10 +4,11 @@ import sentry_sdk
 
 
 class Law(object):
-    def __init__(self, id, epa, text, timestamp, uid, classification, is_new) -> None:
+    def __init__(self, id, epa, text, status, timestamp, uid, classification, is_new) -> None:
         self.id = id
         self.epa = epa
         self.text = text
+        self.status = status
         self.classification = classification
         self.timestamp = timestamp
         self.uid = uid
@@ -41,6 +42,12 @@ class LegislationStatuses(object):
 
     def get_key(self) -> str:
         return (self.name if self.name else '').strip().lower()
+
+    def get_obj(self) -> dict:
+        return {
+            'id': self.id,
+            'name': self.name,
+        }
 
     @classmethod
     def get_key_from_dict(ctl, data) -> str:
@@ -84,6 +91,7 @@ class LegislationStorage(object):
 
         self.legislation = {}
         self.legislation_by_id = {}
+        self.statuses_by_id = {None:None}
         self.legislation_classifications = {}
         self.legislation_statuses = {}
         self.procedure_phases = {}
@@ -117,6 +125,7 @@ class LegislationStorage(object):
                 id=legislation_status['id'],
                 name=legislation_status['name']
             )
+            self.statuses_by_id[legislation_status['id']] = status
             self.legislation_statuses[status.get_key()] = status
 
         for law in self.parladata_api.get_legislation():
@@ -126,10 +135,14 @@ class LegislationStorage(object):
             self.store_legislation_consideration(legislation_consideration, is_new=False)
 
     def store_law(self, law_dict, is_new):
+
+        status = self.statuses_by_id[law_dict['status']]
+
         law_obj = Law(
             id=law_dict['id'],
             epa=law_dict['epa'],
             text=law_dict['text'],
+            status=status,
             timestamp=law_dict['timestamp'],
             classification=law_dict.get('classification', None),
             uid=law_dict['uid'],
@@ -138,6 +151,18 @@ class LegislationStorage(object):
         self.legislation[law_obj.get_key()] = law_obj
         self.legislation_by_id[law_obj.id] = law_obj
         return law_obj
+
+    def set_law_as_enacted(self, epa):
+        in_procedure = self.legislation_statuses['in_procedure']
+        enacted = self.legislation_statuses['enacted']
+        epa = epa.lower().strip()
+        if epa in self.legislation.keys():
+            law = self.legislation[epa]
+            if law.status == in_procedure or law.status == None:
+                # update status
+                data = {'status': enacted.id}
+                patched_law = self.parladata_api.patch_legislation(law.id, data)
+                law.status = enacted
 
     def store_legislation_consideration(self, consideration_dict, is_new):
         law = self.legislation_by_id[consideration_dict['legislation']]
