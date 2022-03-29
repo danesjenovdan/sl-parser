@@ -70,6 +70,8 @@ class LegislationParser(object):
                 'file_name': 'PA8.XML',
                 'xml_key': 'PA',
             },
+        ]
+        result_urls= [
             {
                 'url': 'https://fotogalerija.dz-rs.si/datoteke/opendata/SA.XML',
                 'type': 'act',
@@ -83,21 +85,6 @@ class LegislationParser(object):
                 'xml_key': 'SZ',
             },
         ]
-        result_urls = []
-        # result_urls= [
-        #     {
-        #         'url': 'https://fotogalerija.dz-rs.si/datoteke/opendata/SZ.XML',
-        #         'type': 'law',
-        #         'file_name': 'SZ.XML',
-        #         'xml_key': 'SZ',
-        #     },
-        #     {
-        #         'url': 'https://fotogalerija.dz-rs.si/datoteke/opendata/SA.XML',
-        #         'type': 'act',
-        #         'file_name': 'SA.XML',
-        #         'xml_key': 'SA',
-        #     },
-        # ]
         for legislation_file in urls:
             print('parse file: ', legislation_file["file_name"])
             response = requests.get(legislation_file['url'])
@@ -118,7 +105,7 @@ class LegislationParser(object):
                 f.write(response.content)
             with open(f'/tmp/{enacted_law["file_name"]}', 'rb') as data_file:
                 data = xmltodict.parse(data_file, dict_constructor=dict)
-            self.parser_results_xml(data, enacted_law, array_key='PREDPIS', obj_key='KARTICA_PREDPISA')
+            self.parse_xml_data(data, enacted_law, array_key='PREDPIS', obj_key='KARTICA_PREDPISA')
 
 
     def get_procedured(data, legislation_file, array_key, obj_key):
@@ -205,7 +192,6 @@ class LegislationParser(object):
                     'consideration_phase': legislation_procedure_phase
                 }
                 if legislation_session:
-                    print(legislation_session)
                     session_id = self.storage.session_storage.get_session_by_name(legislation_session)
                     if session_id:
                         data.update(session=session_id)
