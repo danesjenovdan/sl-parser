@@ -44,12 +44,12 @@ class LegislationParser(object):
         print('Start parsing')
         self.mandate = 'VIII'
         urls = [
-            # {
-            #     'url': 'https://fotogalerija.dz-rs.si/datoteke/opendata/PZ.XML',
-            #     'type': 'legislation',
-            #     'file_name': 'PZ.XML',
-            #     'xml_key': 'PZ',
-            # },
+            {
+                'url': 'https://fotogalerija.dz-rs.si/datoteke/opendata/PZ.XML',
+                'type': 'law',
+                'file_name': 'PZ.XML',
+                'xml_key': 'PZ',
+            },
             {
                 'url': 'https://fotogalerija.dz-rs.si/datoteke/opendata/PZ8.XML',
                 'type': 'law',
@@ -62,28 +62,28 @@ class LegislationParser(object):
                 'file_name': 'PA.XML',
                 'xml_key': 'PA',
             },
-            # {
-            #     'url': 'https://fotogalerija.dz-rs.si/datoteke/opendata/SA.XML',
-            #     'type': 'act',
-            #     'file_name': 'SA.XML',
-            #     'xml_key': 'SA',
-            # }
-        ]
-        result_urls= [
             {
-                'url': 'https://fotogalerija.dz-rs.si/datoteke/opendata/SZ.XML',
-                'type': 'law',
-                'file_name': 'SZ.XML',
-                'xml_key': 'SZ',
-            },
-            {
-                'url': 'https://fotogalerija.dz-rs.si/datoteke/opendata/SA.XML',
+                'url': 'https://fotogalerija.dz-rs.si/datoteke/opendata/PA8.XML',
                 'type': 'act',
-                'file_name': 'SA.XML',
+                'file_name': 'PA8.XML',
                 'xml_key': 'SA',
-            },
+            }
         ]
-        urls = []
+        result_urls = []
+        # result_urls= [
+        #     {
+        #         'url': 'https://fotogalerija.dz-rs.si/datoteke/opendata/SZ.XML',
+        #         'type': 'law',
+        #         'file_name': 'SZ.XML',
+        #         'xml_key': 'SZ',
+        #     },
+        #     {
+        #         'url': 'https://fotogalerija.dz-rs.si/datoteke/opendata/SA.XML',
+        #         'type': 'act',
+        #         'file_name': 'SA.XML',
+        #         'xml_key': 'SA',
+        #     },
+        # ]
         for legislation_file in urls:
             print('parse file: ', legislation_file["file_name"])
             response = requests.get(legislation_file['url'])
@@ -178,6 +178,10 @@ class LegislationParser(object):
                     },
                     document_unids
                 )
+                if legislation_procedure_phase.strip() == 'konec postopka':
+                    self.legislation_storage.set_law_as_rejected(epa)
+                elif legislation_procedure_phase.strip() == 'sprejet predlog':
+                    self.legislation_storage.set_law_as_enacted(epa)
             else: # legislation consideration
                 data = {
                     'epa': epa,

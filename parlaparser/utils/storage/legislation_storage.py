@@ -164,6 +164,18 @@ class LegislationStorage(object):
                 patched_law = self.parladata_api.patch_legislation(law.id, data)
                 law.status = enacted
 
+    def set_law_as_rejected(self, epa):
+        in_procedure = self.legislation_statuses['in_procedure']
+        rejected = self.legislation_statuses['rejected']
+        epa = epa.lower().strip()
+        if epa in self.legislation.keys():
+            law = self.legislation[epa]
+            if law.status == in_procedure or law.status == None:
+                # update status
+                data = {'status': rejected.id}
+                patched_law = self.parladata_api.patch_legislation(law.id, data)
+                law.status = rejected
+
     def store_legislation_consideration(self, consideration_dict, is_new):
         law = self.legislation_by_id[consideration_dict['legislation']]
         phase = self.procedure_phases_by_id[consideration_dict['procedure_phase']]
