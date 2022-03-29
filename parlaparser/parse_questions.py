@@ -11,6 +11,8 @@ from parlaparser.utils.methods import get_values
 class QuestionParser(object):
     def __init__(self, storage):
         self.storage = storage
+        self.question_storage = storage.question_parser
+        self.question_storage.load_data()
         locale.setlocale(locale.LC_TIME, "sl_SI")
         self.documents = {}
 
@@ -30,12 +32,7 @@ class QuestionParser(object):
                 raise Exception('key_error')
         self.document_keys = self.documents.keys()
 
-    def parse(self, session_number=None, session_type=None):
-
-        parse_speeches = True
-        parse_votes = False
-
-        mandate = 'VIII'
+    def parse(self):
         url = f'https://fotogalerija.dz-rs.si/datoteke/opendata/VPP.XML'
         response = requests.get(url)
         with open(f'/tmp/VPP.XML', 'wb') as f:
@@ -76,7 +73,8 @@ class QuestionParser(object):
                 'timestamp': timestamp.isoformat(),
                 'gov_id': question_unid
             }
-            if self.storage.check_if_question_is_parsed(question_data):
+            if self.question_storage.check_if_question_is_parsed(question_data):
+                print('question is alredy parsed')
                 continue
 
             print(f'{authors}: {title}')
@@ -98,7 +96,7 @@ class QuestionParser(object):
                 }
             )
 
-            question = self.storage.set_question(question_data)
+            question = self.question_storage.set_question(question_data)
 
             question_id = question['id']
 

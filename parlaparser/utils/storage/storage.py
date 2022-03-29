@@ -2,6 +2,7 @@ from parlaparser import settings
 from parlaparser.utils.parladata_api import ParladataApi
 from parlaparser.utils.storage.session_storage import SessionStorage
 from parlaparser.utils.storage.legislation_storage import LegislationStorage
+from parlaparser.utils.storage.question_storage import QuestionStorage
 
 from collections import defaultdict
 from datetime import datetime
@@ -18,8 +19,6 @@ class DataStorage(object):
     people = {}
     organizations = {}
 
-    questions = {}
-
     agenda_items = {}
     memberships = defaultdict(lambda: defaultdict(list))
 
@@ -35,6 +34,7 @@ class DataStorage(object):
         self.session_storage = SessionStorage(self)
         self.legislation_storage = LegislationStorage(self)
         self.person_storage = None # TODO implement person storage
+        self.question_parser = QuestionStorage(self)
 
 
         for person in self.parladata_api.get_people():
@@ -50,14 +50,6 @@ class DataStorage(object):
             self.organizations[org['parser_names'].lower()] = org['id']
         logging.warning(f'loaded {len(self.organizations)} organizations')
 
-        # for item in self.parladata_api.get_agenda_items():
-        #     self.agenda_items[self.get_agenda_key(item)] = item['id']
-        # logging.warning(f'loaded {len(self.agenda_items)} agenda_items')
-
-        # for question in self.parladata_api.get_questions():
-        #     self.questions[self.get_question_key(question)] = {'id': question['id'], 'answer': question['answer_timestamp']}
-        # logging.warning(f'loaded {len(self.questions)} questions')
-
 
         logging.debug(self.people.keys())
         api_memberships = self.parladata_api.get_memberships()
@@ -65,10 +57,6 @@ class DataStorage(object):
             self.memberships[membership['organization']][membership['member']].append(membership)
         logging.warning(f'loaded {len(api_memberships)} memberships')
 
-
-
-
-    
     def get_id_by_parsername(self, object_type, name):
         """
         """
@@ -161,19 +149,6 @@ class DataStorage(object):
     def set_area(self, data):
         added_area = self.parladata_api.set_area(data)
         return added_area.json()
-
-    # questions
-
-    def set_question(self, data):
-        added_question = self.parladata_api.set_question(data)
-        return added_question
-
-    def check_if_question_is_parsed(self, question):
-        key = self.get_question_key(question)
-        return key in self.questions.keys()
-
-    def get_question_key(self, question):
-        return question['gov_id'].strip().lower()
 
 
     # links

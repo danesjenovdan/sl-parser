@@ -190,7 +190,6 @@ class SessionParser(object):
                 speech_pages = session.get('DOBESEDNI_ZAPISI_SEJE', [])
                 speech_unids = get_values(speech_pages)
 
-                # TODO get organization for sessions of workong bodies
                 if organization_name:
                     organization_id, added_org = self.storage.get_or_add_organization(
                         organization_name,
