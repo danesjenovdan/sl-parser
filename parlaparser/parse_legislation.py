@@ -25,7 +25,9 @@ class LegislationParser(object):
     def load_documents(self, data, key='PZ'):
         print('Loading documents')
 
-        for doc in data[key]['DOKUMENT']:
+        documents = data[key].get('DOKUMENT', [])
+
+        for doc in documents:
             doc = doc['KARTICA_DOKUMENTA']
             try:
                 if 'PRIPONKA' in doc.keys():
@@ -66,8 +68,20 @@ class LegislationParser(object):
                 'url': 'https://fotogalerija.dz-rs.si/datoteke/opendata/PA8.XML',
                 'type': 'act',
                 'file_name': 'PA8.XML',
+                'xml_key': 'PA',
+            },
+            {
+                'url': 'https://fotogalerija.dz-rs.si/datoteke/opendata/SA.XML',
+                'type': 'act',
+                'file_name': 'SA.XML',
                 'xml_key': 'SA',
-            }
+            },
+            {
+                'url': 'https://fotogalerija.dz-rs.si/datoteke/opendata/SZ.XML',
+                'type': 'law',
+                'file_name': 'SZ.XML',
+                'xml_key': 'SZ',
+            },
         ]
         result_urls = []
         # result_urls= [
