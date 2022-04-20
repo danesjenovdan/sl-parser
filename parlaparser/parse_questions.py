@@ -86,10 +86,10 @@ class QuestionParser(object):
 
             people_ids = []
             for author in authors:
-                person_id, added_person = self.storage.get_or_add_person(
+                person = self.storage.people_storage.get_or_add_person(
                     author,
                 )
-                people_ids.append(person_id)
+                people_ids.append(person.id)
 
             question_data.update({
                 'person_authors': people_ids

@@ -187,7 +187,7 @@ class VotesParser(object):
     def save_ballots(self, ballots, vote_id):
         ballots_for_save = []
         for ballot in ballots:
-            person_id, added_person = self.storage.get_or_add_person(
+            person = self.storage.people_storage.get_or_add_person(
                 ballot['voter']
             )
             person_option = ''
@@ -204,7 +204,7 @@ class VotesParser(object):
             else:
                 raise Exception('Unkonwn option')
             ballots_for_save.append({
-                'personvoter': person_id,
+                'personvoter': person.id,
                 'option': person_option,
                 'vote': vote_id
             })

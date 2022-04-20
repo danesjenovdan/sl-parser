@@ -130,8 +130,7 @@ def parse(storage):
             # TODO create parsing gender [parladata api] person['OSEBA_SPOL']
             # TODO okraj [parladata api] person['OSEBA_POSLANSKI_MANDAT']['POSLANSKI_MANDAT_OKRAJ_NAZIV']
             # TODO update parsername with OSEBA_SIFRA if person exists
-            person_id, added_person = storage.get_or_add_person(
-                name,
+            person = storage.people_storage.get_or_add_person_object(
                 {
                     'parser_names': f'{name}|{person["OSEBA_SIFRA"]}',
                     'name': name,
@@ -139,8 +138,8 @@ def parse(storage):
                 }
             )
             # update existing person with GOV ID
-            if not added_person:
-                storage.add_person_parser_name(person_id, person["OSEBA_SIFRA"])
+            if not person.is_new:
+                storage.add_person_parser_name(person.id, person["OSEBA_SIFRA"])
 
         # add groups
         print('Adding groups')
@@ -169,11 +168,10 @@ def parse(storage):
             }
             if acronym:
                 group_data.update({'acronym': acronym})
-            organization_id, added_org = storage.get_or_add_organization(
-                name,
+            organization = storage.organization_storage.get_or_add_organization_object(
                 group_data,
             )
-            org_key_id[group["SUBJEKT_FUNKCIJA_SIFRA"]] = organization_id
+            org_key_id[group["SUBJEKT_FUNKCIJA_SIFRA"]] = organization.id
 
         # add memberships
         print('Adding memberships')
@@ -189,42 +187,41 @@ def parse(storage):
 
             print(person_gov_id, org_gov_id)
 
-            person_id, added_person = storage.get_person(
-                person_gov_id
+            person = storage.people_storage.get_or_add_person(
+                person_gov_id,
+                add=False
             )
             # dont add memberships for people which not in ['SIF']['OSEBE']
-            if not person_id:
+            if not person:
                 continue
 
-            organization_id, added_org = storage.get_or_add_organization(
-                org_gov_id,
-                {}
+            organization = storage.organization_storage.get_or_add_organization(
+                org_gov_id
             )
-
-            if organization_id in storage.memberships.keys():
+            if organization.id in storage.memberships.keys():
                 # skip adding membership if already exists
-                if person_id in storage.memberships[organization_id].keys():
+                if person.id in storage.memberships[organization.id].keys():
                     continue
 
             role = connection_types.get(connection['POVEZAVA_SIFRA'], None)
             if role:
-                if not storage.is_membership_parsed(person_id, organization_id, role):
+                if not storage.is_membership_parsed(person.id, organization.id, role):
                     storage.add_membership(
                         {
-                            'member': person_id,
-                            'organization': organization_id,
+                            'member': person.id,
+                            'organization': organization.id,
                             'on_behalf_of': None,
                             'start_time': None,
                             'role': role
                         }
                     )
                 if org_gov_id in ps_keys and role == 'member':
-                    if not storage.is_membership_parsed(person_id, organization_id, 'voter'):
+                    if not storage.is_membership_parsed(person.id, organization.id, 'voter'):
                         storage.add_membership(
                             {
-                                'member': person_id,
+                                'member': person.id,
                                 'organization': storage.main_org_id,
-                                'on_behalf_of': organization_id,
+                                'on_behalf_of': organization.id,
                                 'start_time': None,
                                 'role': 'voter'
                             }

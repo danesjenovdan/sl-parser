@@ -64,8 +64,7 @@ def copy_old_data():
     people_memberships = defaultdict(list)
     orgs = get_objects('organizations')
     for org in orgs:
-        organization_id, added = storage.get_or_add_organization(
-            org['name'],
+        organization = storage.organization_storage.get_or_add_organization_object(
             {
                 'name': org['name'],
                 'parser_names': '|'.join(org['name_parser'].split(',')) if org['name_parser'] else org['name'],
@@ -77,7 +76,7 @@ def copy_old_data():
                 'voters': org['voters'],
             },
         )
-        orgs_map_ids[org['id']] = organization_id
+        orgs_map_ids[org['id']] = organization.id
         print('added org:', org['name'])
 
     # TODO copy links
@@ -108,8 +107,7 @@ def copy_old_data():
         if not person['id'] in members_ids:
             continue
         print(person)
-        person_id, added_person = storage.get_or_add_person(
-            person['name'],
+        person = storage.people_storage.get_or_add_person_object(
             {
                 'name': person['name'],
                 'parser_names': '|'.join(person['name_parser'].split(',')),
@@ -118,14 +116,14 @@ def copy_old_data():
                 'date_of_death': person['death_date'].split('T')[0] if person['death_date'] else None,
                 'districts': [areas_map_ids[area_id] for area_id in person['districts']],
 
-            },
+            }
         )
 
-        print('added person:', person['name'])
-        for membership in people_memberships[person['id']]:
+        print('added person:', person.name)
+        for membership in people_memberships[person.id]:
             storage.add_membership(
                 {
-                    'member': person_id,
+                    'member': person.id,
                     'organization': orgs_map_ids[membership['organization']],
                     'on_behalf_of': orgs_map_ids[membership['on_behalf_of']] if membership['on_behalf_of'] else None,
                     'start_time': membership['start_time'],

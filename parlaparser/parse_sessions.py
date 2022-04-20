@@ -191,13 +191,10 @@ class SessionParser(object):
                 speech_unids = get_values(speech_pages)
 
                 if organization_name:
-                    organization_id, added_org = self.storage.get_or_add_organization(
+                    organization = self.storage.organization_storage.get_or_add_organization(
                         organization_name,
-                        {
-                            'name': organization_name,
-                            'parser_names': f'{organization_name}',
-                        },
                     )
+                    organization_id = organization.id
                 else:
                     organization_id = self.storage.main_org_id
 

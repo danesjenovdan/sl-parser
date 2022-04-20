@@ -244,13 +244,10 @@ class LegislationStorage(object):
 
             organization_name = legislation_consideration['organization']
             if organization_name:
-                organization_id, added = self.storage.get_or_add_organization(
+                organization = self.storage.organization_storage.get_or_add_organization(
                     organization_name,
-                    {
-                        'name': organization_name,
-                        'parser_names': organization_name,
-                    },
                 )
+                organization_id = organization.id
             else:
                 organization_id = None
 

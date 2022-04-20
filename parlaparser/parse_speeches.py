@@ -427,7 +427,7 @@ class SpeechParser(object):
         speech_objs = []
         for order, speech in enumerate(self.page_content):
             the_order = start_order + order + 1
-            person_id, added_person = self.storage.get_or_add_person(
+            person = self.storage.people_storage.get_or_add_person(
                 speech['person'].strip()
             )
             # skip adding speech if has lover order than last_added_index [for sessions in review]
@@ -447,7 +447,7 @@ class SpeechParser(object):
 
 
             speech_objs.append({
-                'speaker': person_id,
+                'speaker': person.id,
                 'content': speech['content'],
                 'session': self.session.id,
                 'order': the_order,
