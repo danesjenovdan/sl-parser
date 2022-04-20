@@ -11,7 +11,7 @@ from parlaparser.utils.methods import get_values
 class QuestionParser(object):
     def __init__(self, storage):
         self.storage = storage
-        self.question_storage = storage.question_parser
+        self.question_storage = storage.question_storage
         self.question_storage.load_data()
         locale.setlocale(locale.LC_TIME, "sl_SI")
         self.documents = {}
