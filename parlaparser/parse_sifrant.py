@@ -3,6 +3,7 @@ import xmltodict
 import re
 
 from datetime import datetime
+from parlaparser.settings import MANDATE_STARTIME
 
 
 MONTHS = {
@@ -61,7 +62,7 @@ def parse(storage):
     group_classifications = {
         'deputy group': 'pg',
         'committee': 'committee',
-        'srugo': 'other',
+        'drugo': 'other',
         'skupina prijateljstva': 'friendship_group'
     }
 
@@ -120,6 +121,7 @@ def parse(storage):
         # add people
         print('Adding people')
         for person in data['SIF']['OSEBE']['OSEBA']:
+            continue
             name = f'{person["OSEBA_IME"]} {person["OSEBA_PRIIMEK"]}'
 
             izkaznica_string = get_root_or_text(person['OSEBA_OSEBNA_IZKAZNICA'])
@@ -155,15 +157,19 @@ def parse(storage):
                 founding_date = datetime.strptime(group['SUBJEKT_FUNKCIJA_DATUM_USTANOVITVE'], '%Y-%M-%d').isoformat()
             else:
                 None
-            acronym = group.get('SUBJEKT_FUNKCIJA_OZNAKA', None)
+            acronym = group.get('SUBJEKT_FUNKCIJA_NAZIV', None)
             if subject_type_key == 'PS':
                 ps_keys.append(group["SUBJEKT_FUNKCIJA_SIFRA"])
 
+            classification = group_classifications[subject_type_str.lower()]
+            if classification not in ['committee', 'friendship_group']:
+                continue
+
             group_data = {
-                'name': name,
-                'parser_names': f'{name}|{group["SUBJEKT_FUNKCIJA_SIFRA"]}',
+                'name': f'{name} IX',
+                'parser_names': f'{name} IX|{group["SUBJEKT_FUNKCIJA_SIFRA"]}',
                 'gov_id': group["SUBJEKT_FUNKCIJA_SIFRA"],
-                'classification': group_classifications[subject_type_str.lower()],
+                'classification': classification,
                 'founding_date': founding_date,
             }
             if acronym:
@@ -195,34 +201,35 @@ def parse(storage):
             if not person:
                 continue
 
-            organization = storage.organization_storage.get_or_add_organization(
-                org_gov_id
-            )
-            if organization.id in storage.memberships.keys():
+            # organization = storage.organization_storage.get_or_add_organization(
+            #     org_gov_id
+            # )
+            organization_id = org_key_id[org_gov_id]
+            if organization_id in storage.memberships.keys():
                 # skip adding membership if already exists
-                if person.id in storage.memberships[organization.id].keys():
+                if person.id in storage.memberships[organization_id].keys():
                     continue
 
             role = connection_types.get(connection['POVEZAVA_SIFRA'], None)
             if role:
-                if not storage.is_membership_parsed(person.id, organization.id, role):
+                if not storage.is_membership_parsed(person.id, organization_id, role):
                     storage.add_membership(
                         {
                             'member': person.id,
-                            'organization': organization.id,
+                            'organization': organization_id,
                             'on_behalf_of': None,
-                            'start_time': None,
+                            'start_time': MANDATE_STARTIME.isoformat(),
                             'role': role
                         }
                     )
                 if org_gov_id in ps_keys and role == 'member':
-                    if not storage.is_membership_parsed(person.id, organization.id, 'voter'):
+                    if not storage.is_membership_parsed(person.id, organization_id, 'voter'):
                         storage.add_membership(
                             {
                                 'member': person.id,
                                 'organization': storage.main_org_id,
-                                'on_behalf_of': organization.id,
-                                'start_time': None,
+                                'on_behalf_of': organization_id,
+                                'start_time': MANDATE_STARTIME.isoformat(),
                                 'role': 'voter'
                             }
                         )

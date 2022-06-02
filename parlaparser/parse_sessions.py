@@ -12,7 +12,7 @@ from lxml import html
 from enum import Enum
 from urllib import parse
 
-from parlaparser.settings import BASE_URL
+from parlaparser.settings import BASE_URL, MANDATE_GOV_ID
 from parlaparser.utils.methods import get_values
 from parlaparser.parse_speeches import SpeechParser
 from parlaparser.parse_votes import VotesParser
@@ -61,7 +61,6 @@ class SessionParser(object):
 
     def parse(self, session_number=None, session_type=None, parse_speeches=False, parse_votes=False):
 
-        mandate = 'VIII'
         session_url_groups = [
             # TODO uncoment for parsing DZ sessions
             {
@@ -116,7 +115,7 @@ class SessionParser(object):
 
                 uid = session['KARTICA_SEJE']['UNID'].split('|')[1]
 
-                session_url = f'{url_group["dz_url"]}/?mandat={mandate}&seja={session_name}.%20{session_type_xml}&uid={uid}'
+                session_url = f'{url_group["dz_url"]}/?mandat={MANDATE_GOV_ID}&seja={session_name}.%20{session_type_xml}&uid={uid}'
 
                 print(f'Parsing session with url {session_url}')
 

@@ -72,8 +72,12 @@ class ParladataApi(object):
     def get_votes(self):
         return self._get_objects('votes')
 
-    def get_sessions(self):
-        return self._get_objects('sessions')
+    def get_sessions(self, mandate_id=None):
+        if mandate_id:
+            endpoint = f'sessions?mandate={mandate_id}'
+        else:
+            endpoint = 'sessions'
+        return self._get_objects(endpoint)
 
     def get_motions(self, session=None):
         if session:

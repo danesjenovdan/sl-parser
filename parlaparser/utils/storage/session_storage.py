@@ -1,6 +1,8 @@
 from parlaparser.utils.parladata_api import ParladataApi
 from parlaparser.utils.storage.vote_storage import VoteStorage
 
+from parlaparser.settings import MANDATE
+
 
 class Session(object):
     def __init__(self, name, gov_id, id, organizations, start_time, is_new, in_review) -> None:
@@ -20,6 +22,9 @@ class Session(object):
         self.vote_storage = None
 
     def get_key(self) -> str:
+        if not self.gov_id:
+            print(f'Session {self.name} has not gov id')
+            return ''
         return self.gov_id.strip().lower()
 
     @classmethod
@@ -61,7 +66,7 @@ class SessionStorage(object):
         self.dz_sessions_by_names = {}
         self.sessions_in_review = []
         self.storage = core_storage
-        for session in self.parladata_api.get_sessions():
+        for session in self.parladata_api.get_sessions(mandate_id=MANDATE):
             temp_session = Session(
                 name=session['name'],
                 gov_id=session['gov_id'],
