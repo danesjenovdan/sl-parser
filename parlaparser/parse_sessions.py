@@ -12,7 +12,7 @@ from lxml import html
 from enum import Enum
 from urllib import parse
 
-from parlaparser.settings import BASE_URL, MANDATE_GOV_ID
+from parlaparser.settings import BASE_URL, MANDATE, MANDATE_GOV_ID
 from parlaparser.utils.methods import get_values
 from parlaparser.parse_speeches import SpeechParser
 from parlaparser.parse_votes import VotesParser
@@ -69,12 +69,12 @@ class SessionParser(object):
                 'file_name': 'SDZ.XML',
                 'dz_url': 'https://www.dz-rs.si/wps/portal/Home/seje/izbranaSeja'
             },
-            # {
-            #     'url': 'https://fotogalerija.dz-rs.si/datoteke/opendata/SDT.XML',
-            #     'root_key': 'SDT',
-            #     'file_name': 'SDT.XML',
-            #     'dz_url': 'https://www.dz-rs.si/wps/portal/Home/seje/izbranaSejaDt'
-            # }
+            {
+                'url': 'https://fotogalerija.dz-rs.si/datoteke/opendata/SDT.XML',
+                'root_key': 'SDT',
+                'file_name': 'SDT.XML',
+                'dz_url': 'https://www.dz-rs.si/wps/portal/Home/seje/izbranaSejaDt'
+            }
         ]
         for url_group in session_url_groups:
             response = requests.get(url_group['url'])
@@ -191,7 +191,7 @@ class SessionParser(object):
 
                 if organization_name:
                     organization = self.storage.organization_storage.get_or_add_organization(
-                        organization_name,
+                        organization_name + ' ' + MANDATE_GOV_ID,
                     )
                     organization_id = organization.id
                 else:
