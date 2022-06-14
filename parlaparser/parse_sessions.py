@@ -303,6 +303,8 @@ class SessionParser(object):
                 pass
 
         if date_str:
+            # replace brackets
+            date_str = date_str.replace('(', '').replace(')', '')
             if time_str:
                 return datetime.strptime(f'{date_str} {time_str}', '%d. %m. %Y %H:%M')
             # TODO send page date falure
