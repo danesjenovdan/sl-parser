@@ -9,7 +9,7 @@ from datetime import datetime
 from lxml import html
 from enum import Enum
 
-from parlaparser.settings import BASE_URL
+from parlaparser.settings import BASE_URL, MANDATE_GOV_ID
 from parlaparser.utils.methods import get_values
 from parlaparser.utils.storage.legislation_storage import LegislationStorage
 
@@ -44,7 +44,7 @@ class LegislationParser(object):
 
     def parse(self):
         print('Start parsing')
-        self.mandate = 'VIII'
+        self.mandate = MANDATE_GOV_ID
         urls = [
             {
                 'url': 'https://fotogalerija.dz-rs.si/datoteke/opendata/PZ.XML',
@@ -53,9 +53,9 @@ class LegislationParser(object):
                 'xml_key': 'PZ',
             },
             {
-                'url': 'https://fotogalerija.dz-rs.si/datoteke/opendata/PZ8.XML',
+                'url': 'https://fotogalerija.dz-rs.si/datoteke/opendata/PZ9.XML',
                 'type': 'law',
-                'file_name': 'PZ8.XML',
+                'file_name': 'PZ9.XML',
                 'xml_key': 'PZ',
             },
             {
@@ -65,9 +65,9 @@ class LegislationParser(object):
                 'xml_key': 'PA',
             },
             {
-                'url': 'https://fotogalerija.dz-rs.si/datoteke/opendata/PA8.XML',
+                'url': 'https://fotogalerija.dz-rs.si/datoteke/opendata/PA9.XML',
                 'type': 'act',
-                'file_name': 'PA8.XML',
+                'file_name': 'PA9.XML',
                 'xml_key': 'PA',
             },
         ]
@@ -130,10 +130,11 @@ class LegislationParser(object):
         # load type of subjects
         try:
             legislation_list = data[legislation_file['xml_key']][array_key]
-        except:
+        except Exception as e:
             print(legislation_file)
             print(data.keys())
-            raise Exception()
+            print(e)
+            return
         for wraped_legislation in legislation_list:
             legislation = wraped_legislation[obj_key]
             try:
@@ -219,7 +220,7 @@ class LegislationParser(object):
             legislation = wraped_legislation[obj_key]
             epa = self.remove_leading_zeros(legislation['KARTICA_EPA'])
             mandat = legislation['KARTICA_MANDAT']
-            if 'VIII' in epa:
+            if self.mandate in epa:
                 self.legislation_storage.set_law_as_enacted(
                     epa=epa
                 )
