@@ -24,7 +24,7 @@ class SpeechParser(object):
     BR_TAG = r"<br\s*/?>"
     REGEX_IS_START_OF_CONTENT = r'seja .{5,14} (ob)?\s?\d{1,2}'
     REGEX_START_WIERD_WB_SESSION = r'Odprti .{3} seje se je začel ob \d\d'
-    FIND_PERSON = r'(^(Nadaljevanje )?[A-ZČŠŽĆÖĐÒÓÔÖÜÛÚÙÀÁÄÂÌÍÎÏ.]{3,25}\s*(?:[(A-ZČŠŽĆÖĐÒÓÔÖÜÛÚÙÀÁÄÂÌÍÎÏ)])*? [A-ZČŠŽĆÖĐÒÓÔÖÜÛÚÙÀÁÄÂÌÍÎÏ. ]{3,25}){1}(\([A-ZČŠŽĆÖĐÒÓÔÖÜÛÚÙÀÁÄÂÌÍÎÏa-zčšžćöđòóôöüûúùàáäâìíîï ]*\)){0,1}(:)?(\s)?'
+    FIND_PERSON = r'(^(Nadaljevanje |nadaljevanje )?[A-ZČŠŽĆÖĐÒÓÔÖÜÛÚÙÀÁÄÂÌÍÎÏ.]{3,25}\s*(?:[(A-ZČŠŽĆÖĐÒÓÔÖÜÛÚÙÀÁÄÂÌÍÎÏ)])*? [A-ZČŠŽĆÖĐÒÓÔÖÜÛÚÙÀÁÄÂÌÍÎÏ. ]{3,25}){1}(\([A-ZČŠŽĆÖĐÒÓÔÖÜÛÚÙÀÁÄÂÌÍÎÏa-zčšžćöđòóôöüûúùàáäâìíîï ]*\)){0,1}(:)?(\s)?'
     FIND_MISTER_OR_MADAM = r'(^GOSPOD\s?_{4,50}|^GOSPA\s?_{4,50})(:)?'
     FIND_TRAK = r'^([\dOab\.]{1,4}\s*.|[\dOab]{1,4}\s*.\s*(in|-)??\s*[\dOab]{1,4}\s*.)?\s*TRAK\b'
     FIND_SESSION_PAUSE = r'\(Seja .{6,10}(prekinjena|nadaljevala) .{6,10}\)'
