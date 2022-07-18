@@ -355,6 +355,7 @@ class SpeechParser(object):
             'PREDSEDNNICA ',
             'PREDSEDNI ',
             'Nadaljevanje',
+            'nadaljevanje',
             'PREDSEDINK ',
             'PODPREDSEDINCA ',
             'PODPRDSEDNICA ',
