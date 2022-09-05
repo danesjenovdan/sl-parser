@@ -70,7 +70,7 @@ class SpeechParser(object):
                 print('---_____retry another document ________------')
                 return
 
-            self.date_of_sitting = htree.cssselect("table td span")[-1].text
+            self.date_of_sitting = htree.cssselect("table td")[-1].text
 
             self.parse_content(htree)
 
@@ -103,7 +103,8 @@ class SpeechParser(object):
 
     # main loop
     def parse_content(self, htree):
-        output_text = htree.cssselect(".fieldset span.outputText")[0]
+        #output_text = htree.cssselect(".fieldset span.outputText")[0]
+        output_text = htree.cssselect("form > div.fieldset")[0]
         etree.strip_tags(output_text, 'font')
         output_text_string = self.tostring_unwraped(output_text)
         output_text_string = re.sub(self.ANY_SPACES_BETWEEN_B_TAGS, "\\1", output_text_string, 0, re.MULTILINE)
