@@ -143,12 +143,12 @@ class SessionParser(object):
 
                 try:
                     # if there is any speech at the session
-                    first_speech_date = session_htree.cssselect('form>div>table>tbody>tr>td>div>table a>span')[0].text.replace(' ', '').split('Z')[0].strip()
+                    first_speech_date = session_htree.cssselect('form>div>table>tbody>tr>td>div>table a')[0].text.replace(' ', '').split('Z')[0].strip()
                     start_time = datetime.strptime(first_speech_date, '%d.%m.%Y')
                     session_in_review = False
 
                     # check if session has any speech document in review
-                    for speech_link in session_htree.cssselect('form>div>table>tbody>tr>td>div>table a>span'):
+                    for speech_link in session_htree.cssselect('form>div>table>tbody>tr>td>div>table a'):
                         if '(v pregledu)' in speech_link.text:
                             session_in_review = True
                 except:
