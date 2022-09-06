@@ -50,6 +50,7 @@ class SpeechParser(object):
         self.session = session
         self.start_date = start_date
         self.session_start_time = None
+        self.pages = []
 
     def parse(self, parse_new_speeches=False):
         start_order = 0
@@ -181,6 +182,12 @@ class SpeechParser(object):
                 'person': self.fix_name(self.current_person),
                 'content': '\n'.join(self.current_text).lstrip(':')
             })
+
+        # prevent to adding speeches form two equals documents
+        if self.page_content in self.pages:
+            self.page_content = []
+        else:
+            self.pages.append(self.page_content)
 
     def tostring_unwraped(self, element):
         string = element.text or ''
@@ -433,13 +440,13 @@ class SpeechParser(object):
                 speech['person'].strip()
             )
             # skip adding speech if has lover order than last_added_index [for sessions in review]
-            if last_added_index and order < last_added_index:
-                print('This page is already parsed')
+            if last_added_index and the_order < last_added_index:
+                print('This speech is already parsed')
                 continue
 
             if not speech['content']:
                 print(self.page_content)
-                sentry_sdk.capture_message(f'Speech is without content session_id: {self.session.id} person_id: {person_id} the_order: {the_order}')
+                sentry_sdk.capture_message(f'Speech is without content session_id: {self.session.id} person_id: {person.id} the_order: {the_order}')
                 continue
 
             if isinstance(start_time, str):
