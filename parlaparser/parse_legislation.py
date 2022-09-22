@@ -176,7 +176,7 @@ class LegislationParser(object):
                         'epa': epa,
                         'uid': unid,
                         'timestamp': date_iso,
-                        'classification': self.legislation_storage.get_legislation_classifications_id(legislation_file['type'])
+                        'classification': self.legislation_storage.get_legislation_classifications_id(legislation_file['type']),
                         'mandate_id': self.storage.mandate_id
                     },
                     document_unids
