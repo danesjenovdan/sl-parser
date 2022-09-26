@@ -162,9 +162,9 @@ class VotesParser(object):
             value = tds[1]
             if key == 'Dokument':
                 span = value#.cssselect('span')
-                if not span:
+                if span == None:
                     continue
-                document_name = span[0].text
+                document_name = span.text
             if key == 'Naslov':
                 em = value.cssselect('em')
                 if not em:
