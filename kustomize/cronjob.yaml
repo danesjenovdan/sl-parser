@@ -23,6 +23,8 @@ spec:
                 value: '137'
               - name: PARSER_MANDATE_ID
                 value: '2'
+              - name: INSTALATION_NAME
+                value: Slovenija
             envFrom:
               - secretRef:
                   name: parladata-slovenija-credentials
