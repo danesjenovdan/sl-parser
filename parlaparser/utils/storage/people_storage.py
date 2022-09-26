@@ -1,4 +1,5 @@
 from parlaparser.utils.parladata_api import ParladataApi
+import re
 
 
 class Person(object):
@@ -51,6 +52,8 @@ class PeopleStorage(object):
         return None
 
     def get_or_add_person(self, name, add=True) -> Person :
+        prefix, name = self.get_prefix(name)
+        # TODO save prefix
         person = self.get_object_by_parsername(name)
         if person:
             return person
@@ -77,3 +80,11 @@ class PeopleStorage(object):
         new_person = self.store_person(updated_person)
         del self.people[person.parser_name.lower()]
         return new_person
+
+    def get_prefix(self, name):
+        prefix = re.findall('^[a-z]{0,4}\.', name)
+        if prefix:
+            prefix = prefix[0]
+            return prefix, name.replace(prefix, '').strip()
+        else:
+            return None, name
