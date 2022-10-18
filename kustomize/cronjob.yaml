@@ -25,6 +25,8 @@ spec:
                 value: '2'
               - name: INSTALATION_NAME
                 value: Slovenija
+              - name: PARSER_INTERVAL_HOURS
+                value: 6
             envFrom:
               - secretRef:
                   name: parladata-slovenija-credentials
