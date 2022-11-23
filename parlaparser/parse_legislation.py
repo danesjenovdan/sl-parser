@@ -177,7 +177,7 @@ class LegislationParser(object):
                         'uid': unid,
                         'timestamp': date_iso,
                         'classification': self.legislation_storage.get_legislation_classifications_id(legislation_file['type']),
-                        'mandate_id': self.storage.mandate_id
+                        'mandate': self.storage.mandate_id
                     },
                     document_unids
                 )
@@ -251,7 +251,7 @@ class LegislationParser(object):
 
     def remove_leading_zeros(self, word, separeted_by=[',', '-', '/']):
         for separator in separeted_by:
-            word = separator.join(map(lambda x: x.lstrip('0'), word.split(separator)))
+            word = separator.join(map(lambda x: x.lstrip('0'), word.split(separator))).strip()
         return word
 
 
