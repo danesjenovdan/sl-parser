@@ -121,12 +121,11 @@ class ParladataApi(object):
         else:
             return 0
 
-    def get_memberships(self, role=None):
-        if role:
-            role = f'?role=role'
-        else:
-            role = ''
-        return self._get_objects(f'person-memberships/{role}')
+    def get_memberships(self, **kwargs):
+        args = '&'.join([f'{key}={value}' for key, value in kwargs.items()])
+        if args:
+            args = '?'+ args
+        return self._get_objects(f'person-memberships/{args}')
 
     def patch_memberships(self, id, data):
         return self._patch_object(f'person-memberships/{id}', data).json()

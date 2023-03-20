@@ -11,6 +11,7 @@ class Person(object):
         self.name = name
         self.parser_names = parser_names
         self.is_new = is_new
+        self.memberships = []
 
     def get_key(self) -> str:
         return self.parser_names.lower()
@@ -24,6 +25,7 @@ class PeopleStorage(object):
     def __init__(self, core_storage) -> None:
         self.parladata_api = ParladataApi()
         self.people = {}
+        self.people_by_id = {}
         self.storage = core_storage
         for person in self.parladata_api.get_people():
             self.store_person(person, is_new=False)
@@ -36,6 +38,7 @@ class PeopleStorage(object):
             is_new=is_new,
         )
         self.people[temp_person.get_key()] = temp_person
+        self.people_by_id[temp_person.id] = temp_person
         return temp_person
 
     def get_object_by_parsername(self, name):
@@ -77,9 +80,12 @@ class PeopleStorage(object):
 
     def add_person_parser_name(self, person, parser_name):
         updated_person = self.parladata_api.add_person_parser_name(person.id, parser_name).json()
-        new_person = self.store_person(updated_person)
-        del self.people[person.parser_name.lower()]
+        new_person = self.store_person(updated_person, is_new=False)
+        del self.people[person.parser_names.lower()]
         return new_person
+
+    def get_person_by_id(self, id):
+        return self.people_by_id.get(id, None)
 
     def get_prefix(self, name):
         prefix = re.findall('^[a-z]{0,4}\.', name)

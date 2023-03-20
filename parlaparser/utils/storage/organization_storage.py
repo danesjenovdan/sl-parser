@@ -10,6 +10,7 @@ class Organization(object):
         self.name = name
         self.parser_names = parser_names
         self.is_new = is_new
+        self.memberships = []
 
     def get_key(self) -> str:
         return self.parser_names.lower()
@@ -24,6 +25,7 @@ class OrganizationStorage(object):
         self.parladata_api = ParladataApi()
         self.organizations = {}
         self.storage = core_storage
+        self.organizations_by_id = {}
         for organization in self.parladata_api.get_organizations():
             if not organization['parser_names']:
                 continue
@@ -37,6 +39,7 @@ class OrganizationStorage(object):
             is_new=is_new,
         )
         self.organizations[temp_organization.get_key()] = temp_organization
+        self.organizations_by_id[temp_organization.id] = temp_organization
         return temp_organization
 
     def get_object_by_parsername(self, name):
@@ -65,6 +68,9 @@ class OrganizationStorage(object):
         response = self.parladata_api.set_organization(data_object)
         response_data = response.json()
         return self.store_organization(response_data, is_new=True)
+
+    def get_organization_by_id(self, id):
+        return self.organizations_by_id.get(id, None)
 
     def get_or_add_organization_object(self, organization_data) -> Organization:
         organization = self.get_object_by_parsername(organization_data['name'])

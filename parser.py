@@ -1,4 +1,4 @@
-from parlaparser.parse_sifrant import parse as parse_sifrant
+from parlaparser.parse_sifrant import MembershipsParser
 from parlaparser.parse_sessions import SessionParser
 from parlaparser.parse_legislation import LegislationParser
 from parlaparser.parse_questions import QuestionParser
@@ -20,7 +20,8 @@ sentry_sdk.init(
 
 storage = DataStorage()
 
-#parse_sifrant(storage)
+parse_sifrant = MembershipsParser(storage)
+parse_sifrant.parse()
 
 # session votes / speeches
 session_parser = SessionParser(storage)
