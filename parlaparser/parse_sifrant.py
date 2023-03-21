@@ -197,7 +197,7 @@ class MembershipsParser(object):
                             'member': person.id,
                             'organization': organization_id,
                             'on_behalf_of': None,
-                            'start_time': MANDATE_STARTIME.isoformat(),
+                            'start_time': datetime.now().isoformat(),
                             'role': role,
                             'mandate': self.storage.mandate_id
                         }
