@@ -64,7 +64,8 @@ class VotesParser(object):
                         legislation_id = self.storage.legislation_storage.legislation[epa].id
                     else:
                         legislation = self.storage.legislation_storage.set_law({
-                            'epa': epa
+                            'epa': epa,
+                            'mandate': self.storage.mandate_id,
                         })
                         legislation_id = legislation.id
 
