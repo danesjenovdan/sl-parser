@@ -7,6 +7,7 @@ from parlaparser.utils.storage.people_storage import PeopleStorage
 from parlaparser.utils.storage.organization_storage import OrganizationStorage
 from parlaparser.utils.storage.agenda_item_storage import AgendaItemStorage
 from parlaparser.utils.storage.membership_storage import MembershipStorage
+from parlaparser.utils.storage.area_storage import AreaStorage
 
 from collections import defaultdict
 from datetime import datetime
@@ -39,15 +40,18 @@ class DataStorage(object):
         self.question_storage = QuestionStorage(self)
         self.agenda_item_storage = AgendaItemStorage(self)
         self.membership_storage = MembershipStorage(self)
-
-    # area
-    def set_area(self, data):
-        added_area = self.parladata_api.set_area(data)
-        return added_area.json()
-
+        self.area_storage = AreaStorage(self)
 
     # links
     def set_link(self, data):
         added_link = self.parladata_api.set_link(data)
         return added_link
+
+    def set_org_membership(self, data):
+        added_link = self.parladata_api.set_org_membership(data)
+        return added_link
+
+    def set_mandate(self, data):
+        added_mandate = self.parladata_api.set_mandate(data)
+        return added_mandate
 

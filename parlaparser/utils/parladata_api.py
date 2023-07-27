@@ -46,6 +46,7 @@ class ParladataApi(object):
             )
         if response.status_code > 299:
             logger.warning(response.content)
+            logger.warning(data)
             #sentry_sdk.capture_message(f'Parladata request POST endpoint: {endpoint} responed with body: {response.content}')
         return response
 
@@ -113,6 +114,9 @@ class ParladataApi(object):
     def get_legislation_statuses(self):
         return self._get_objects('legislation-status')
 
+    def get_areas(self):
+        return self._get_objects('areas')
+
     def get_speech_count(self, id):
         url = f'{self.base_url}/speeches/count/?session={id}'
         data = requests.get(url).json()
@@ -171,7 +175,10 @@ class ParladataApi(object):
         return self._set_object('organizations', data)
 
     def set_area(self, data):
-        return self._set_object('areas', data)
+        return self._set_object('areas', data).json()
+
+    def set_mandate(self, data):
+        return self._set_object('mandates', data).json()
 
     def set_membership(self, data):
         return self._set_object('person-memberships', data).json()
