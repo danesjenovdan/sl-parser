@@ -294,13 +294,21 @@ class SessionParser(object):
             td = tr.cssselect('td')
             try:
                 if td[0].cssselect("b")[0].text == 'Datum':
-                    date_str = td[1].cssselect("span")[0].text
+                    span = td[1].cssselect("span")
+                    if span:
+                        date_str = span[0].text
+                    else:
+                        date_str = td[1].text
                 if td[0].cssselect("b")[0].text == 'Ura':
-                    time_str = td[1].cssselect("span")[0].text
+                    span = td[1].cssselect("span")
+                    if span:
+                        time_str = span[0].text
+                    else:
+                        time_str = td[1].text
                     if not re.search("^\d\d:\d\d$", time_str):
                         time_str = None
-            except:
-                pass
+            except Exception as e:
+                print(e)
 
         if date_str:
             # replace brackets
