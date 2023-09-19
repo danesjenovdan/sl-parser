@@ -105,7 +105,10 @@ class SpeechParser(object):
     # main loop
     def parse_content(self, htree):
         #output_text = htree.cssselect(".fieldset span.outputText")[0]
-        output_text = htree.cssselect("form > div.fieldset")[0]
+        try:
+            output_text = htree.cssselect("form > div.fieldset")[0]
+        except:
+            return
         etree.strip_tags(output_text, 'font')
         output_text_string = self.tostring_unwraped(output_text)
         output_text_string = re.sub(self.ANY_SPACES_BETWEEN_B_TAGS, "\\1", output_text_string, 0, re.MULTILINE)
