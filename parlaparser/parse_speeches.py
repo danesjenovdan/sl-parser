@@ -35,6 +35,8 @@ class SpeechParser(object):
 
     TRACK_CONTINUE_WORDS = ['(nadaljevanje)', '(Nadaljevanje)']
 
+    DATE_REGEX = r'\d{1,2}\.\s*\d{1,2}\.\s*\d{4}'
+
     DEBUG = False
 
     # data
@@ -71,7 +73,16 @@ class SpeechParser(object):
                 print('---_____retry another document ________------')
                 return
 
-            self.date_of_sitting = htree.cssselect("table td")[-1].text
+            maybe_date_element = htree.cssselect("table td")
+            if maybe_date_element:
+                self.date_of_sitting = maybe_date_element[-1].text
+            else:
+                maybe_date_element = htree.cssselect("form>div>div")
+                if maybe_date_element:
+                    dates = re.findall(self.DATE_REGEX, maybe_date_element)
+                    if dates:
+                        self.date_of_sitting = dates[0]
+
 
             self.parse_content(htree)
 
