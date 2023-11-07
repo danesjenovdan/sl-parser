@@ -80,7 +80,8 @@ class SpeechParser(object):
             else:
                 maybe_date_element = htree.cssselect("form>div>div")
                 if maybe_date_element:
-                    dates = re.findall(self.DATE_REGEX, self.tostring_unwraped(maybe_date_element))
+                    maybe_date = self.tostring_unwraped(maybe_date_element[0])
+                    dates = re.findall(self.DATE_REGEX, maybe_date)
                     if dates:
                         self.date_of_sitting = dates[0]
 
