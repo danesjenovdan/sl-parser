@@ -73,13 +73,14 @@ class SpeechParser(object):
                 print('---_____retry another document ________------')
                 return
 
+            # gat date of sitting 
             maybe_date_element = htree.cssselect("table td")
             if maybe_date_element:
                 self.date_of_sitting = maybe_date_element[-1].text
             else:
                 maybe_date_element = htree.cssselect("form>div>div")
                 if maybe_date_element:
-                    dates = re.findall(self.DATE_REGEX, maybe_date_element)
+                    dates = re.findall(self.DATE_REGEX, self.tostring_unwraped(maybe_date_element))
                     if dates:
                         self.date_of_sitting = dates[0]
 
@@ -494,4 +495,3 @@ class SpeechParser(object):
 
 if __name__ == '__main__':
     speech_parser = SpeechParser(TEST_TRANSCRIPT_URL)
-
