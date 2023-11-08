@@ -115,7 +115,7 @@ class SessionParser(object):
 
                 uid = session['KARTICA_SEJE']['UNID'].split('|')[1]
 
-                session_url = f'{url_group["dz_url"]}/?mandat={MANDATE_GOV_ID}&seja={session_name}.%20{session_type_xml}&uid={uid}'
+                session_url = f'{url_group["dz_url"]}/?mandat={MANDATE_GOV_ID}&seja= {session_name}.%20{session_type_xml}&uid={uid}'
 
                 print(f'Parsing session with url {session_url}')
 
