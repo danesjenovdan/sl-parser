@@ -206,7 +206,7 @@ class SessionParser(object):
                     'start_time': start_time.isoformat(),
                     'in_review': session_in_review,
                     'needs_editing': session_needs_editing,
-                    'gov_id': session_url,
+                    'gov_id': session_url.replace(" ", ""),
                     'mandate_id': self.storage.mandate_id
                 })
                 session_id = current_session.id
