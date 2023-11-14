@@ -15,9 +15,9 @@ class VotesParser(object):
         self.storage.legislation_storage.load_data()
 
     def parse_votes(self, request_session, htree):
-        tables = htree.cssselect('form>div>table')
-        if len(tables) > 1:
-            lines = tables[1].cssselect('tbody>tr')
+        tables = htree.cssselect('table.dataTableExHov')
+        if len(tables) > 0:
+            lines = tables[0].cssselect('tbody>tr')
             for line in lines:
                 columns = line.cssselect('td')
                 # if there's not date for vote, skip it
@@ -156,7 +156,9 @@ class VotesParser(object):
         # parse header
         for tr in header.cssselect('tbody>tr'):
             tds = tr.cssselect('td')
-            span_b = tds[0]#.cssselect('span>b')
+            if not tds:
+                continue
+            span_b = tds[0].cssselect('b')
             if not span_b:
                 continue
             key = span_b[0].text
@@ -177,12 +179,12 @@ class VotesParser(object):
         }
 
         # parse content
-        for tr in content.cssselect('tr')[1:]:
+        for tr in content.cssselect('tbody>tr'):
             tds = tr.cssselect('td')
             output['ballots'].append({
-                'voter': tds[0].text,
-                'kvorum': tds[1].text,
-                'option': tds[2].text,
+                'voter': tds[0].cssselect('span')[0].text,
+                'kvorum': tds[1].cssselect('span')[0].text,
+                'option': tds[2].cssselect('span')[0].text,
             })
 
         return output
@@ -196,9 +198,9 @@ class VotesParser(object):
             person_option = ''
             kvorum = ballot['kvorum']
             option = ballot['option']
-            if not kvorum:
+            if kvorum != 'Kvorum':
                 person_option = 'absent'
-            elif option == 'Ni':
+            elif option == 'Ni' or option == '—':
                 person_option = 'abstain'
             elif option == 'Proti':
                 person_option = 'against'
