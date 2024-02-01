@@ -92,6 +92,7 @@ class SessionParser(object):
                 print()
                 print('New session')
                 #print(session['KARTICA_SEJE']['KARTICA_OZNAKA'])
+                full_session_name = session['KARTICA_SEJE']['KARTICA_OZNAKA']
                 session_name = session['KARTICA_SEJE']['KARTICA_OZNAKA'].lstrip("0")
                 session_type_xml = session['KARTICA_SEJE']['KARTICA_VRSTA']
                 organization_name = session['KARTICA_SEJE']['KARTICA_STATUS']
@@ -194,8 +195,15 @@ class SessionParser(object):
                         organization_name + ' ' + MANDATE_GOV_ID,
                     )
                     organization_id = organization.id
+                    org_gov_id = organization.gov_id
+                    org_gov_id_short = org_gov_id[2:]
+                    if org_gov_id_short[0] == '0':
+                        org_gov_id_short = org_gov_id_short[1:]
+                    session_gov_id = f'{self.storage.MANDATE_GOV_ID} {org_gov_id_short} - {organization_name.strip()} - {full_session_name}. {session_type_xml}'
                 else:
                     organization_id = self.storage.main_org_id
+                    org_gov_id = None
+                    session_gov_id = f'{self.storage.MANDATE_GOV_ID} Državni zbor - {full_session_name}. {session_type_xml}'
 
                 # get or add session
                 current_session = self.storage.session_storage.add_or_get_session({
@@ -206,7 +214,7 @@ class SessionParser(object):
                     'start_time': start_time.isoformat(),
                     'in_review': session_in_review,
                     'needs_editing': session_needs_editing,
-                    'gov_id': session_url.replace(" ", ""),
+                    'gov_id': session_gov_id,
                     'mandate_id': self.storage.mandate_id
                 })
                 session_id = current_session.id

@@ -30,20 +30,21 @@ class Motion(object):
         self.is_new = is_new
 
     def get_key(self) -> str:
-        return (self.gov_id if self.gov_id else '').strip().lower()
+        return (self.datetime if self.datetime else '').strip().lower()
 
     @classmethod
     def get_key_from_dict(ctl, data) -> str:
-        return (data['gov_id'] if data['gov_id'] else '').strip().lower()
+        return (data['datetime'] if data['datetime'] else '').strip().lower()
 
 class VoteStorage(object):
-    def __init__(self, session) -> None:
+    def __init__(self, session=None) -> None:
         self.parladata_api = ParladataApi()
         self.motions = {}
 
         self.session = session
 
-        for motion in self.parladata_api.get_motions(session=session.id):
+        #for motion in self.parladata_api.get_motions(session=session.id):
+        for motion in self.parladata_api.get_motions():
             temp_motion =Motion(
                 text=motion['text'],
                 id=motion['id'],

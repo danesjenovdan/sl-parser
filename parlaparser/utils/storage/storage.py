@@ -8,6 +8,7 @@ from parlaparser.utils.storage.organization_storage import OrganizationStorage
 from parlaparser.utils.storage.agenda_item_storage import AgendaItemStorage
 from parlaparser.utils.storage.membership_storage import MembershipStorage
 from parlaparser.utils.storage.area_storage import AreaStorage
+from parlaparser.utils.storage.vote_storage import VoteStorage
 
 from collections import defaultdict
 from datetime import datetime
@@ -27,6 +28,7 @@ class DataStorage(object):
     mandate_start_time = settings.MANDATE_STARTIME
     mandate_id = settings.MANDATE
     main_org_id = settings.MAIN_ORG_ID
+    MANDATE_GOV_ID = settings.MANDATE_GOV_ID
     # old end
 
     def __init__(self):
@@ -41,6 +43,7 @@ class DataStorage(object):
         self.agenda_item_storage = AgendaItemStorage(self)
         self.membership_storage = MembershipStorage(self)
         self.area_storage = AreaStorage(self)
+        self.vote_storage = VoteStorage(self)
 
     # links
     def set_link(self, data):

@@ -2,7 +2,7 @@ from parlaparser.utils.parladata_api import ParladataApi
 
 
 class Organization(object):
-    def __init__(self, name, id, parser_names, is_new) -> None:
+    def __init__(self, name, id, parser_names, gov_id, is_new) -> None:
         self.parladata_api = ParladataApi()
 
         # session members
@@ -10,6 +10,7 @@ class Organization(object):
         self.name = name
         self.parser_names = parser_names
         self.is_new = is_new
+        self.gov_id = gov_id
         self.memberships = []
 
     def get_key(self) -> str:
@@ -26,6 +27,7 @@ class OrganizationStorage(object):
         self.organizations = {}
         self.storage = core_storage
         self.organizations_by_id = {}
+        self.organizations_by_gov_id = {}
         for organization in self.parladata_api.get_organizations():
             if not organization['parser_names']:
                 continue
@@ -36,10 +38,13 @@ class OrganizationStorage(object):
             name=organization['name'],
             parser_names = organization['parser_names'],
             id=organization['id'],
+            gov_id=organization['gov_id'],
             is_new=is_new,
         )
         self.organizations[temp_organization.get_key()] = temp_organization
         self.organizations_by_id[temp_organization.id] = temp_organization
+        if temp_organization.gov_id:
+            self.organizations_by_gov_id[temp_organization.gov_id] = temp_organization
         return temp_organization
 
     def get_object_by_parsername(self, name):
@@ -71,6 +76,9 @@ class OrganizationStorage(object):
 
     def get_organization_by_id(self, id):
         return self.organizations_by_id.get(id, None)
+
+    def get_organization_by_gov_id(self, gov_id):
+        return self.organizations_by_gov_id.get(gov_id, None)
 
     def get_or_add_organization_object(self, organization_data) -> Organization:
         organization = self.get_object_by_parsername(organization_data['name'])
