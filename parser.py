@@ -2,6 +2,7 @@ from parlaparser.parse_sifrant import MembershipsParser
 from parlaparser.parse_sessions import SessionParser
 from parlaparser.parse_legislation import LegislationParser
 from parlaparser.parse_questions import QuestionParser
+from parlaparser.parse_votes_xml import VotesParser
 from parlaparser.utils.storage.storage import DataStorage
 
 import sentry_sdk
