@@ -11,6 +11,14 @@ SESSION_TYPE = {
     'izredna': 'irregular',
 }
 
+ROMAN_NUMERALS_MAP = {
+    '9': 'IX',
+    '8': 'VIII',
+    '7': 'VII',
+    '6': 'VI',
+    '5': 'V',
+}
+
 class VotesParser(object):
     def __init__(self, storage):
         self.storage = storage
@@ -48,6 +56,7 @@ class VotesParser(object):
                 vote_vrsta_dokumenta = vote_xml['VRSTA_DOKUMENTA']
                 naslov_akta = vote_xml['NASLOV_AKTA']
                 vote_zveza = vote_xml['ZVEZA']
+                xml_mandate = vote_xml['MANDAT']
                 seja = vote_xml['SEJA']
                 if url_group['type'] == 'DZ':
                     session_name_org = seja['ID'].strip()
@@ -80,7 +89,12 @@ class VotesParser(object):
                     'organizations': [organization.id],
                     })
 
+                if xml_mandate and xml_mandate.isdigit():
+                    xml_mandate = ROMAN_NUMERALS_MAP.get(xml_mandate)
+
                 epa = vote_xml.get('EPA')
+                if epa:
+                    epa = f'{epa}-{xml_mandate}'
                 uid = None
 
                 if self.storage.vote_storage.check_if_motion_is_parsed({'datetime': timestamp}):
