@@ -161,6 +161,9 @@ class LegislationParser(object):
                 if legislation_session:
                     legislation_session = legislation_session.strip('0').lower() + ' seja'
 
+                if champion_wb:
+                    champion_wb = self.storage.organization_storage.get_or_add_organization(champion_wb).id
+
                 connected_legislation = wraped_legislation.get('POVEZANI_PREDPISI', [])
                 connected_legislation_unids = get_values(connected_legislation)
             except Exception as e:
@@ -170,15 +173,19 @@ class LegislationParser(object):
                 continue
 
             if array_key == 'PREDPIS': # legislation
+                law_data = {
+                    'text': title,
+                    'epa': epa,
+                    'uid': unid,
+                    'proposer_text': champion,
+                    'procedure_type': legislation_procedure_type,
+                    'mdt_fk': champion_wb,
+                    'timestamp': date_iso,
+                    'classification': self.legislation_storage.get_legislation_classifications_id(legislation_file['type']),
+                    'mandate': self.storage.mandate_id
+                }
                 self.add_or_update_legislation(
-                    {
-                        'text': title,
-                        'epa': epa,
-                        'uid': unid,
-                        'timestamp': date_iso,
-                        'classification': self.legislation_storage.get_legislation_classifications_id(legislation_file['type']),
-                        'mandate': self.storage.mandate_id
-                    },
+                    law_data,
                     document_unids
                 )
                 if legislation_procedure_phase.strip() == 'konec postopka':

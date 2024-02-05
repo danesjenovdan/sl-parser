@@ -119,7 +119,7 @@ class VotesParser(object):
         legislation_id = None
         if epa:
             if self.storage.legislation_storage.is_law_parsed(epa):
-                legislation_id = self.storage.legislation_storage.legislation[epa].id
+                legislation_id = self.storage.legislation_storage.legislation[epa.lower()].id
             else:
                 legislation = self.storage.legislation_storage.set_law({
                     'epa': epa,

@@ -208,7 +208,7 @@ class LegislationStorage(object):
         return law_obj
 
     def is_law_parsed(self, epa):
-        return epa in self.legislation.keys()
+        return epa.lower() in self.legislation.keys()
 
     def has_law_name(self, epa):
         return epa in self.legislation.keys()
