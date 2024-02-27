@@ -75,8 +75,6 @@ class VotesParser(object):
                     org_name = '-'.join(dt_splited[1:]).strip()
                     org_gov_id = f'DT{org_gov_id_short.strip().zfill(3)}'
                     organization = self.storage.organization_storage.get_organization_by_gov_id(org_gov_id)
-                    print(org_gov_id)
-
 
                     session_gov_id = f'{self.storage.MANDATE_GOV_ID} {org_gov_id_short} - {org_name.strip()} - {session_gov_id_short}'
 
