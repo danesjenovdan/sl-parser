@@ -90,8 +90,12 @@ class ParladataApi(object):
     def get_agenda_items(self):
         return self._get_objects('agenda-items')
 
-    def get_questions(self):
-        return self._get_objects('questions')
+    def get_questions(self, mandate=None):
+        if mandate:
+            endpoint = f'questions?mandate={mandate}'
+        else:
+            endpoint = 'questions'
+        return self._get_objects(endpoint)
 
     def get_legislation(self):
         return self._get_objects('legislation')

@@ -71,7 +71,8 @@ class QuestionParser(object):
                 'recipient_text': recipient_text,
                 'type_of_question': question_type,
                 'timestamp': timestamp.isoformat(),
-                'gov_id': question_unid
+                'gov_id': question_unid,
+                'mandate': self.storage.mandate_id,
             }
             if self.question_storage.check_if_question_is_parsed(question_data):
                 print('question is alredy parsed')

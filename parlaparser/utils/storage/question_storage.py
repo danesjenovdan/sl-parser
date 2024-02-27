@@ -24,9 +24,10 @@ class QuestionStorage(object):
         self.parladata_api = ParladataApi()
         self.questions = {}
         self.storage = core_storage
+        self.mandate = self.storage.mandate_id
     def load_data(self):
         if not self.questions:
-            for question in self.parladata_api.get_questions():
+            for question in self.parladata_api.get_questions(self.mandate):
                 temp_question = Question(
                     gov_id=question['gov_id'],
                     id=question['id'],
