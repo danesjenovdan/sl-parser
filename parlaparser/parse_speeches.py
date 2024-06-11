@@ -213,6 +213,9 @@ class SpeechParser(object):
         return string
 
     def parse_person_line(self, line_tree):
+        """
+        try to find person name in line if not found parse line as text
+        """
         name_candidate = line_tree.cssselect('b')
         speaker=None
         if name_candidate:
@@ -339,6 +342,10 @@ class SpeechParser(object):
             'onesnaženost',
             'problematiko',
             'aktualne',
+            'zakonsko',
+            'predkazenskih',
+            'postopkov',
+            'zoper',
         ]
         for word in forbiden_name_words:
             if word in lower_name:
