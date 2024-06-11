@@ -1,7 +1,7 @@
 # sl-parser
 
 ## run
-
+pip install -r requirements.txt
 python3 parser.py
 
 ## parser troubleshooting
@@ -19,7 +19,7 @@ python3 parser.py
 
 
 :bulb:
-```
-If in parladata parsed person with weird name, for example like beginning of the law, you can add this weird words to `parlaparser.parse_speeches.SpeechParser.is_valid_name.forbiden_name_words`
-```
+
+>>If in parladata parsed person with weird name, for example like beginning of the law, you can add this weird words to `parlaparser.parse_speeches.SpeechParser.is_valid_name.forbiden_name_words`
+
 
