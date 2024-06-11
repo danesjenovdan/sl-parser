@@ -4,6 +4,7 @@ from requests.packages.urllib3.util.retry import Retry
 import xmltodict
 import re
 import locale
+import sentry_sdk
 
 from datetime import datetime
 
@@ -11,8 +12,10 @@ from lxml import html
 from enum import Enum
 from urllib import parse
 
-from parlaparser.settings import BASE_URL
+from parlaparser.settings import BASE_URL, MANDATE, MANDATE_GOV_ID
 from parlaparser.utils.methods import get_values
+from parlaparser.parse_speeches import SpeechParser
+from parlaparser.parse_votes import VotesParser
 
 
 class ParserState(Enum):
@@ -58,14 +61,14 @@ class SessionParser(object):
 
     def parse(self, session_number=None, session_type=None, parse_speeches=False, parse_votes=False):
 
-        mandate = 'VIII'
         session_url_groups = [
-            # {
-            #     'url':'https://fotogalerija.dz-rs.si/datoteke/opendata/SDZ.XML',
-            #     'root_key': 'SDZ',
-            #     'file_name': 'SDZ.XML',
-            #     'dz_url': 'https://www.dz-rs.si/wps/portal/Home/seje/izbranaSeja'
-            # },
+            # TODO uncoment for parsing DZ sessions
+            {
+                'url':'https://fotogalerija.dz-rs.si/datoteke/opendata/SDZ.XML',
+                'root_key': 'SDZ',
+                'file_name': 'SDZ.XML',
+                'dz_url': 'https://www.dz-rs.si/wps/portal/Home/seje/izbranaSeja'
+            },
             {
                 'url': 'https://fotogalerija.dz-rs.si/datoteke/opendata/SDT.XML',
                 'root_key': 'SDT',
@@ -75,9 +78,9 @@ class SessionParser(object):
         ]
         for url_group in session_url_groups:
             response = requests.get(url_group['url'])
-            with open(f'parlaparser/files/{url_group["file_name"]}', 'wb') as f:
+            with open(f'/tmp/{url_group["file_name"]}', 'wb') as f:
                 f.write(response.content)
-            with open(f'parlaparser/files/{url_group["file_name"]}', 'rb') as data_file:
+            with open(f'/tmp/{url_group["file_name"]}', 'rb') as data_file:
                 data = xmltodict.parse(data_file, dict_constructor=dict)
 
             # load documents from XML
@@ -85,12 +88,17 @@ class SessionParser(object):
 
             # load type of subjects
             num_of_session = len(data[url_group['root_key']]['SEJA'])
-            for index, session in enumerate(data[url_group['root_key']]['SEJA'][1633:]): # TODO remove slice
-                print(session['KARTICA_SEJE']['KARTICA_OZNAKA'])
+            for index, session in enumerate(list(reversed(data[url_group['root_key']]['SEJA']))):
+                print()
+                print('New session')
+                #print(session['KARTICA_SEJE']['KARTICA_OZNAKA'])
+                full_session_name = session['KARTICA_SEJE']['KARTICA_OZNAKA']
                 session_name = session['KARTICA_SEJE']['KARTICA_OZNAKA'].lstrip("0")
                 session_type_xml = session['KARTICA_SEJE']['KARTICA_VRSTA']
                 organization_name = session['KARTICA_SEJE']['KARTICA_STATUS']
                 print(f'parsing session {index}/{num_of_session}')
+
+                start_time = None
 
                 session_needs_editing = False
 
@@ -98,15 +106,19 @@ class SessionParser(object):
                     print('Session has unvalid name')
                     continue
 
-                if (session_number and int(session_name) != int(session_number)) or (session_type and session_type_xml != session_type):
-                    print('skip session')
+                try:
+                    if (session_number and int(session_name) != int(session_number)) or (session_type and session_type_xml != session_type):
+                        print('skip session')
+                        continue
+                except:
                     continue
+
 
                 uid = session['KARTICA_SEJE']['UNID'].split('|')[1]
 
-                session_url = f'{url_group["dz_url"]}/?mandat={mandate}&seja={session_name}.%20{session_type_xml}&uid={uid}'
+                session_url = f'{url_group["dz_url"]}/?mandat={MANDATE_GOV_ID}&seja= {session_name}.%20{session_type_xml}&uid={uid}'
 
-                print(session_url)
+                print(f'Parsing session with url {session_url}')
 
                 # get session page
                 request_session = requests.Session()
@@ -132,12 +144,12 @@ class SessionParser(object):
 
                 try:
                     # if there is any speech at the session
-                    first_speech_date = session_htree.cssselect('form>div>table>tbody>tr>td>div>table a>span')[0].text.replace(' ', '').split('Z')[0].strip()
+                    first_speech_date = session_htree.cssselect('form>div>table>tbody>tr>td>div>table a')[0].text.replace(' ', '').split('Z')[0].strip()
                     start_time = datetime.strptime(first_speech_date, '%d.%m.%Y')
                     session_in_review = False
 
                     # check if session has any speech document in review
-                    for speech_link in session_htree.cssselect('form>div>table>tbody>tr>td>div>table a>span'):
+                    for speech_link in session_htree.cssselect('form>div>table>tbody>tr>td>div>table a'):
                         if '(v pregledu)' in speech_link.text:
                             session_in_review = True
                 except:
@@ -152,11 +164,19 @@ class SessionParser(object):
                         sklic_htree = html.fromstring(sklic_content)
 
                         sklic_start_time = self.find_date_form_table(sklic_htree)
-                        if sklic_start_time:
+                        if sklic_start_time and not start_time:
+                            # if session has not speeches try to find start time from sklic
                             start_time = sklic_start_time
+                        elif start_time:
+                            # if session has speeches then use date of 1st speech
+                            pass
                         else:
                             # TODO sentry call or something. That is wierd case in sklic without date.
                             session_needs_editing = True
+
+                    # skip parsing session with start time in future
+                    if start_time > datetime.now():
+                        continue
 
                 except Exception as e:
                     print('----ERROR.....:   cannot find date', e)
@@ -170,20 +190,23 @@ class SessionParser(object):
                 speech_pages = session.get('DOBESEDNI_ZAPISI_SEJE', [])
                 speech_unids = get_values(speech_pages)
 
-                # TODO get organization for sessions of workong bodies
                 if organization_name:
-                    organization_id, added_org = self.storage.get_or_add_organization(
-                        organization_name,
-                        {
-                            'name': organization_name,
-                            'parser_names': f'{organization_name}',
-                        },
+                    organization = self.storage.organization_storage.get_or_add_organization(
+                        organization_name + ' ' + MANDATE_GOV_ID,
                     )
+                    organization_id = organization.id
+                    org_gov_id = organization.gov_id
+                    org_gov_id_short = org_gov_id[2:]
+                    if org_gov_id_short[0] == '0':
+                        org_gov_id_short = org_gov_id_short[1:]
+                    session_gov_id = f'{self.storage.MANDATE_GOV_ID} {org_gov_id_short} - {organization_name.strip()} - {full_session_name}. {session_type_xml}'
                 else:
                     organization_id = self.storage.main_org_id
+                    org_gov_id = None
+                    session_gov_id = f'{self.storage.MANDATE_GOV_ID} Državni zbor - {full_session_name}. {session_type_xml}'
 
                 # get or add session
-                session_id, session_added = self.storage.add_or_get_session({
+                current_session = self.storage.session_storage.add_or_get_session({
                     'name': f'{session_name}. {session_type_xml.lower()} seja',
                     'organization': organization_id,
                     'organizations': [organization_id],
@@ -191,35 +214,45 @@ class SessionParser(object):
                     'start_time': start_time.isoformat(),
                     'in_review': session_in_review,
                     'needs_editing': session_needs_editing,
-                    'gov_id': session_url
+                    'gov_id': session_gov_id,
+                    'mandate_id': self.storage.mandate_id
                 })
+                session_id = current_session.id
+                #if current_session.start_time != start_time.isoformat():
+                #    # patch session start_time if is changed on dz page
+                #    self.storage.session_storage.patch_session(current_session, {'start_time': start_time.isoformat()})
+
+                print(f'Getted session: {session_name}. {session_type_xml.lower()} seja has id {session_id}')
 
                 parse_all_speeches = False
                 parse_new_speeches = False
 
-                # session is reviewed, reload speeches
-                if not session_in_review and (session_id in self.storage.sessions_in_review):
-                    # set session to not in review
-                    self.storage.patch_session(session_id, {'in_review': False})
+                was_session_in_review = self.storage.session_storage.is_session_in_review(current_session)
 
-                    # unvalidate speeches
-                    self.storage.unvalidate_speeches(session_id)
+                # session is reviewed, reload speeches
+                if not session_in_review and was_session_in_review:
+                    # set session to not in review
+                    self.storage.session_storage.patch_session(current_session, {'in_review': False})
+
+                    if parse_speeches:
+                        # unvalidate speeches
+                        current_session.unvalidate_speeches()
 
                     # TODO parse new speeches
                     parse_all_speeches = True
 
-                elif session_in_review and not (session_id in self.storage.sessions_in_review):
+                elif session_in_review and not was_session_in_review:
                     # set session to not in review
-                    self.storage.patch_session(session_id, {'in_review': True})
+                    self.storage.session_storage.patch_session(current_session, {'in_review': True})
                     parse_new_speeches = True
 
-                elif session_in_review and (session_id in self.storage.sessions_in_review):
+                elif session_in_review and was_session_in_review:
                     parse_new_speeches = True
-                elif session_added:
+                elif current_session.is_new:
                     parse_all_speeches = True
 
 
-                if session_added and document_unids:
+                if current_session.is_new and document_unids:
                     for doc_unid in document_unids:
                         if doc_unid in self.document_keys:
                             document = self.documents[doc_unid]
@@ -232,395 +265,31 @@ class SessionParser(object):
                                 }
                                 self.storage.set_link(link_data)
 
-                if parse_votes:
-                    ballots = self.parse_votes(request_session, session_htree, session_id)
+                # parsing VOTES
+                # TODO check, the condition may stink
+                print(f'parse votes {parse_votes} {was_session_in_review} {current_session.is_new}')
+                if parse_votes and (was_session_in_review or current_session.is_new):
+                    vote_parser = VotesParser(self.storage, current_session)
+                    vote_parser.parse_votes(request_session, session_htree)
 
-                print("parse speeches?: ",parse_speeches, parse_all_speeches, parse_new_speeches)
+                # parsing SPEECHES
+                print("parse speeches?: ", parse_speeches, parse_all_speeches, parse_new_speeches)
                 if parse_speeches and (parse_all_speeches or parse_new_speeches):
                     start_order = 0
+                    speech_urls = []
                     for orginal_speech_unid in speech_unids:
-                        speech_url = self.magnetograms[orginal_speech_unid]
-                        print('Speech url: ', speech_url)
-                        speeches_content = requests.get(url=speech_url).content
-                        htree = html.fromstring(speeches_content)
+                        try:
+                            speech_urls.append(self.magnetograms[orginal_speech_unid])
+                        except:
+                            pass
 
-                        err_mgs = htree.cssselect('form span.wcmLotusMessage')
+                    print("speech_unids")
+                    print(speech_unids)
 
-                        if err_mgs and err_mgs[0].text == 'Podatki dokumenta so nedostopni.':
-                            print('---_____retry another document ________------')
-                            continue
-
-                        meta, speeches, date_of_sitting = self.parse_speeches(htree)
-
-                        if parse_new_speeches:
-                            last_added_index = self.storage.sessions_speech_count.get(session_id, 0)
-                        else:
-                            last_added_index = None
-
-                        start_order = self.save_speeches(
-                            session_id,
-                            meta,
-                            speeches,
-                            start_order,
-                            organization_id,
-                            last_added_index,
-                            session_start_time=start_time,
-                            date_of_sitting=date_of_sitting
-                        )
+                    speech_parser = SpeechParser(self.storage, speech_urls, current_session, start_time)
+                    speech_parser.parse(parse_new_speeches)
 
 
-
-    def parse_votes(self, request_session, htree, session_id):
-        lines = htree.cssselect('form>div>table>tbody>tr')
-        for line in lines:
-            columns = line.cssselect('td')
-            # if there's not date for vote, skip it
-            if not columns[0].cssselect('span') or not columns[0].cssselect('span')[0].text:
-                continue
-            date = columns[0].cssselect('span')[0].text
-            print(date)
-            time = columns[1].cssselect('span')[0].text
-            if columns[3].cssselect('span'):
-                epa = columns[3].cssselect('span')[0].text
-            else:
-                epa = ''
-            url_text = columns[4].cssselect('span')[0].text
-            ballots_url = columns[4].cssselect('a')[0].get('href')
-            uid = parse.parse_qs(parse.urlsplit(ballots_url).query)['uid'][0]
-
-
-            if self.storage.check_if_motion_is_parsed({'gov_id': uid}):
-                print('this vote is already parsed')
-                continue
-
-            parsed_ballots = self.parse_ballots(ballots_url)
-
-            start_time = datetime.strptime(f'{date} {time}', '%d. %m. %Y %X')
-
-            motion_meta = parsed_ballots['meta']
-            if motion_meta['title']:
-                title = f'{motion_meta["title"]} - {motion_meta["doc_name"]}'
-            else:
-                title = motion_meta["doc_name"]
-
-            legislation_id = None
-            if epa:
-                if epa in self.storage.legislation.keys():
-                    legislation_id = self.storage.legislation[epa]['id']
-                else:
-                    legislation = self.storage.set_legislation({
-                        'epa': epa
-                    })
-                    legislation_id = legislation['id']
-
-            motion = {
-                'title': title,
-                'text': title,
-                'datetime': start_time.isoformat(),
-                'session': session_id,
-                'gov_id': uid
-            }
-            if legislation_id:
-                motion['law'] = legislation_id
-            vote = {
-                'name': title,
-                'timestamp': start_time.isoformat(),
-                'session': session_id,
-            }
-            motion_obj = self.storage.set_motion(motion)
-            motion_id = motion_obj['id']
-            vote['motion'] = motion_id
-            vote_obj = self.storage.set_vote(vote)
-            vote_id = int(vote_obj['id'])
-
-            self.save_balltos(parsed_ballots['ballots'], vote_id)
-
-            # TODO add links to votes...
-            # for link in data['links']:
-            #     # save links
-            #     link_data = {
-            #         'motion': motion_id,
-            #         #'agenda_item': self.agenda_item_id,
-            #         'url': link['url'],
-            #         'name': link['title'],
-            #         'tags': [link['tag']]
-            #     }
-            #     if 'law' in motion.keys():
-            #         link_data.update({'law': motion['law']})
-            #     self.storage.set_link(link_data)
-
-        # follow pagination
-        paging_meta = htree.cssselect(".pagerDeluxe_text")[0].text.split(' ')
-        current_page = paging_meta[1]
-        last_page = paging_meta[3]
-        if int(current_page) < int(last_page):
-            post_url = htree.cssselect('form')[0].get('action')
-            form_id = htree.cssselect('form')[0].get('id')
-            view_state = htree.cssselect('input[name="javax.faces.ViewState"]')[0].get('value')
-            url_encode = htree.cssselect('input[name="javax.faces.encodedURL"]')[0].get('value')
-
-            url = f'{BASE_URL}{post_url}'
-            payload = {
-                'vax.faces.encodedURL': url_encode,
-                f'{form_id}_SUBMIT': 1,
-                f'{form_id}:tableEx1:goto1__pagerGoText': 2,
-                'javax.faces.ViewState': view_state,
-                f'{form_id}:tableEx1:deluxe1__pagerNext.x': 0,
-                f'{form_id}:tableEx1:deluxe1__pagerNext.y': 0,
-            }
-
-            response = request_session.post(url, data=payload)
-            session_htree = html.fromstring(response.content)
-            self.parse_votes(request_session, session_htree, session_id)
-
-
-
-    def parse_ballots(self, url):
-        output = {
-            'ballots': [],
-            'meta': {}
-        }
-        ballots_content = requests.get(url=f'{BASE_URL}{url}').content
-        htree = html.fromstring(ballots_content)
-        body = htree.cssselect('.stControlBody')[0]
-        tables = body.cssselect('table')
-        header = tables[0]
-        content = tables[1]
-        title = ''
-        document_name = ''
-        # parse header
-        for tr in header.cssselect('tbody>tr'):
-            tds = tr.cssselect('td')
-            span_b = tds[0].cssselect('span>b')
-            if not span_b:
-                continue
-            key = span_b[0].text
-            value = tds[1]
-            if key == 'Dokument':
-                span = value.cssselect('span')
-                if not span:
-                    continue
-                document_name = span[0].text
-            if key == 'Naslov':
-                em = value.cssselect('span>em')
-                if not em:
-                    continue
-                title = em[0].text
-        output['meta'] = {
-            'title': title,
-            'doc_name': document_name,
-        }
-
-        # parse content
-        for tr in content.cssselect('tr')[1:]:
-            tds = tr.cssselect('td')
-            output['ballots'].append({
-                'voter': tds[0].text,
-                'kvorum': tds[1].text,
-                'option': tds[2].text,
-            })
-
-        return output
-
-    def save_balltos(self, ballots, vote_id):
-        ballots_for_save = []
-        for ballot in ballots:
-            person_id, added_person = self.storage.get_or_add_person(
-                ballot['voter']
-            )
-            person_option = ''
-            kvorum = ballot['kvorum']
-            option = ballot['option']
-            if not kvorum:
-                person_option = 'absent'
-            elif option == 'Ni':
-                person_option = 'abstain'
-            elif option == 'Proti':
-                person_option = 'against'
-            elif option == 'Za':
-                person_option = 'for'
-            else:
-                raise Exception('Unkonwn option')
-            ballots_for_save.append({
-                'personvoter': person_id,
-                'option': person_option,
-                'vote': vote_id
-            })
-        self.storage.set_ballots(ballots_for_save)
-
-
-
-    def parse_speeches(self, htree):
-        print('parsing speeches')
-        state = ParserState.META
-        speaker = None
-        content = []
-        result = []
-        meta = []
-
-        find_person = r'(^[A-ZČŠŽĆĐ. ]{3,25} [A-ZČŠŽĆĐ. ]{3,25}){1}(\([A-Za-zđčćžšČĆŽŠŽĐ ]*\)){0,1}(:)?'
-
-        regex_is_start_of_content = r'seja .{5,14} (ob)?\s?\d{1,2}'
-
-        regex_start_wierd_wb_session = r'Odprti .{3} seje se je začel ob \d\d'
-
-        find_trak_r = r'\d{1,2}. TRAK:? \([A-ZŠŽĆČ]{1,3}\)'
-        find_trak_r = r'^([\dOa]{1,2}\s*.)?\s*TRAK\b'
-
-        date_of_sitting = htree.cssselect("table td span")[-1].text
-
-        for element in htree.cssselect("span.outputText font"):
-            #line = element.text.strip()
-            line = ' '.join(map(str.strip, element.xpath("./text()"))).strip()
-            if not line:
-                continue
-
-            # skip line if contians TRAK:
-            if re.search(find_trak_r, line):
-                continue
-
-            if state == ParserState.META:
-                if line:
-                    meta.append(line)
-
-                if re.search(regex_is_start_of_content, line, re.IGNORECASE) or line.startswith('Besedilo je objavljeno') or re.search(regex_start_wierd_wb_session, line, re.IGNORECASE):
-                    state = ParserState.CONTENT
-            elif state == ParserState.CONTENT:
-                if element.getparent().tag == 'b':
-                    person_line = re.findall(find_person, line)
-                    if len(person_line) == 1 and self.is_valid_name(person_line[0][0]):
-                        if speaker:
-                            result.append((speaker, '\n'.join(content)))
-                            content = []
-                        speaker = person_line[0]
-                    else:
-                        # TODO trak magic
-                        if line.lower().startswith('seja se je kon'):
-                            continue
-                        content.append(line)
-                else:
-                    content.append(line)
-
-        result.append((speaker, '\n'.join(content)))
-
-        return meta, result, date_of_sitting
-
-    def save_speeches(self, session_id, meta, speeches, start_order, organization_id, last_added_index=None, session_start_time=None, date_of_sitting=None):
-        extract_date_reg = r'\((.*?)\)'
-
-        print('organization_id', organization_id)
-
-        if date_of_sitting:
-            date_string = date_of_sitting
-            try:
-                start_time = datetime.strptime(date_string, '%d. %m. %Y')
-            except:
-                # TODO send error
-                start_time = session_start_time
-        else:
-            date_string = re.findall(extract_date_reg, ' '.join(meta))
-            if date_string:
-                start_time = datetime.strptime(date_string, '%d. %B %Y')
-            else:
-                start_time = session_start_time
-
-        if speeches:
-            if not speeches[0][0]:
-                print('[ERROR] Cannot read session content')
-                # TODO send error
-                return
-
-
-        speech_objs = []
-        for order, (speaker_name, speech) in enumerate(speeches):
-            the_order = start_order + order + 1
-            person_id, added_person = self.storage.get_or_add_person(
-                self.fix_name(speaker_name[0].strip()).strip()
-            )
-            # skip adding speech if has lover order than last_added_index [for sessions in review]
-            if last_added_index and order < last_added_index:
-                continue
-
-            speech_objs.append({
-                'speaker': person_id,
-                'content': speech,
-                'session': session_id,
-                'order': the_order,
-                'start_time': start_time.isoformat()
-            })
-        self.storage.add_speeches(speech_objs)
-        return the_order
-
-    def fix_name(self, full_name):
-        remove_from_name = [
-            'PREDSEDNIK',
-            'PREDSENDIK',
-            'PODPREDSEDNIK',
-            'PODPREDSENIK',
-            'PODPREDSEDNICA',
-            'PREDSEDIK',
-            'POD',
-            'PREDSEDNICA',
-            'PREDSEDUJOČI',
-            'PRESEDNICA',
-            'POPDREDSEDNIK',
-            'PREDSENICA',
-            'PRESEDNIK',
-            'PRESDEDNIK',
-            'REDSEDNIK',
-            'PREDSEDDNICA',
-            'PEDSEDNIK',
-            'PREDEDNIK',
-            'PREDSEDNK',
-            'REDSEDNICA',
-            'PREDSDNIK',
-            'DSEDNIK',
-            'PREDEDNICA',
-            'PREDSENIK',
-            'PREDSENDICA',
-            'PRDSEDNIK',
-            'PREDSEDNCA',
-            'PRDSEDNICA',
-        ]
-        for word in remove_from_name:
-            if word in full_name:
-                full_name = full_name.replace(word, '')
-        return full_name
-
-    def is_valid_name(self, full_name):
-        """
-        Checker for valid names
-        Name is unvalid if;
-            * if combiend form more 4 words
-            * contains forbiden words
-        """
-        if len(full_name.split(' ')) > 4:
-            return False
-        lower_name = full_name.lower()
-        forbiden_name_words = [
-            'obravnav',
-            'postopka',
-            'zakona',
-            'prekinjena',
-            'vprašanja',
-            'davku',
-            'prehajamo'
-            'dnevnega',
-            'poročilo',
-            'problematika',
-            'evropske',
-            'administrativne'
-            'predstavitev',
-            'industrijski',
-            'nalezljivih',
-            'predlogu',
-            'skupno',
-            'obvestilo'
-        ]
-        for word in forbiden_name_words:
-            if word in lower_name:
-                return False
-        return True
 
     def get_session_type(self, type_text):
         type_text = type_text.lower().strip()
@@ -633,37 +302,31 @@ class SessionParser(object):
             td = tr.cssselect('td')
             try:
                 if td[0].cssselect("b")[0].text == 'Datum':
-                    date_str = td[1].cssselect("span")[0].text
+                    span = td[1].cssselect("span")
+                    if span:
+                        date_str = span[0].text
+                    else:
+                        date_str = td[1].text
                 if td[0].cssselect("b")[0].text == 'Ura':
-                    time_str = td[1].cssselect("span")[0].text
+                    span = td[1].cssselect("span")
+                    if span:
+                        time_str = span[0].text
+                    else:
+                        time_str = td[1].text
                     if not re.search("^\d\d:\d\d$", time_str):
                         time_str = None
-            except:
-                pass
+            except Exception as e:
+                print(e)
 
         if date_str:
+            # replace brackets
+            date_str = date_str.replace('(', '').replace(')', '')
             if time_str:
                 return datetime.strptime(f'{date_str} {time_str}', '%d. %m. %Y %H:%M')
             # TODO send page date falure
             return datetime.strptime(date_str, '%d. %m. %Y')
         # TODO send page date falure
         return None
-
-
-# perser imen regex
-
-# BRANKO SIMONOVIČ (PS DeSUS):
-# PODPREDSEDNICA TINA HEFERLE:
-# PREDSEDNIK MAG. DEJAN ŽIDAN:
-
-
-# ([A-ZČŠŽĆĐ. ]{5,50}){1}(\([A-Za-zđčćžšČĆŽŠŽĐ ]*\)){0,1}(:)?
-
-# ([A-ZČŠŽĆĐ. ]{5,50}){1}  <--- poslanec
-
-# (\([A-Za-zđčćžšČĆŽŠŽĐ ]*\)){0,1}  <-- stranka
-
-# (:)? <--- opcijsko dvopičje
 
 
 # Odločitve

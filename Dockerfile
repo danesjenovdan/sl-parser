@@ -1,7 +1,8 @@
-FROM rg.fr-par.scw.cloud/djnd/parladata:latest
+FROM rg.fr-par.scw.cloud/djnd/parladata-slovenija:latest
 
 RUN apt-get update && \
-    apt-get upgrade -y
+    apt-get upgrade -y && \
+    apt-get -y install locales locales-all
 
 RUN /usr/local/bin/python -m pip install --upgrade pip
 

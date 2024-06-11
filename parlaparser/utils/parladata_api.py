@@ -4,6 +4,8 @@ import logging
 from requests.auth import HTTPBasicAuth
 from parlaparser import settings
 
+import sentry_sdk
+
 logger = logging.getLogger('logger')
 
 
@@ -24,6 +26,7 @@ class ParladataApi(object):
             response = requests.get(url, auth=self.auth)
             if response.status_code != 200:
                 logger.warning(response.content)
+                #sentry_sdk.capture_message(f'Parladata request GET with url: {url} responed with body: {response.content}')
             data = response.json()
             yield data['results']
             url = data['next']
@@ -43,6 +46,8 @@ class ParladataApi(object):
             )
         if response.status_code > 299:
             logger.warning(response.content)
+            logger.warning(data)
+            #sentry_sdk.capture_message(f'Parladata request POST endpoint: {endpoint} responed with body: {response.content}')
         return response
 
     def _patch_object(self, endpoint, data):
@@ -53,6 +58,7 @@ class ParladataApi(object):
             )
         if response.status_code > 299:
             logger.warning(response.content)
+            #sentry_sdk.capture_message(f'Parladata request PATCH endpoint: {endpoint} responed with body: {response.content}')
         return response
 
     def set_object(self, endpoint, data):
@@ -67,17 +73,29 @@ class ParladataApi(object):
     def get_votes(self):
         return self._get_objects('votes')
 
-    def get_sessions(self):
-        return self._get_objects('sessions')
+    def get_sessions(self, mandate_id=None):
+        if mandate_id:
+            endpoint = f'sessions?mandate={mandate_id}'
+        else:
+            endpoint = 'sessions'
+        return self._get_objects(endpoint)
 
-    def get_motions(self):
-        return self._get_objects('motions')
+    def get_motions(self, session=None):
+        if session:
+            endpoint = f'motions?session={session}'
+        else:
+            endpoint = 'motions'
+        return self._get_objects(endpoint)
 
     def get_agenda_items(self):
         return self._get_objects('agenda-items')
 
-    def get_questions(self):
-        return self._get_objects('questions')
+    def get_questions(self, mandate=None):
+        if mandate:
+            endpoint = f'questions?mandate={mandate}'
+        else:
+            endpoint = 'questions'
+        return self._get_objects(endpoint)
 
     def get_legislation(self):
         return self._get_objects('legislation')
@@ -100,12 +118,22 @@ class ParladataApi(object):
     def get_legislation_statuses(self):
         return self._get_objects('legislation-status')
 
-    def get_memberships(self, role=None):
-        if role:
-            role = f'?role=role'
+    def get_areas(self):
+        return self._get_objects('areas')
+
+    def get_speech_count(self, id):
+        url = f'{self.base_url}/speeches/count/?session={id}'
+        data = requests.get(url).json()
+        if 'count' in data.keys():
+            return data['count']
         else:
-            role = ''
-        return self._get_objects(f'person-memberships/{role}')
+            return 0
+
+    def get_memberships(self, **kwargs):
+        args = '&'.join([f'{key}={value}' for key, value in kwargs.items()])
+        if args:
+            args = '?'+ args
+        return self._get_objects(f'person-memberships/{args}')
 
     def patch_memberships(self, id, data):
         return self._patch_object(f'person-memberships/{id}', data).json()
@@ -119,7 +147,7 @@ class ParladataApi(object):
         return self._get_data_from_pager_api_gen(f'speeches/{id}{query}', limit=1)
 
     def get_session_speech_count(self, session_id):
-        url = f'{self.base_url}/speeches/?session={session_id}'
+        url = f'{self.base_url}/speeches/?session={session_id}&?limit=1'
         response = requests.get(url, auth=self.auth)
         return response.json()['count']
 
@@ -151,7 +179,10 @@ class ParladataApi(object):
         return self._set_object('organizations', data)
 
     def set_area(self, data):
-        return self._set_object('areas', data)
+        return self._set_object('areas', data).json()
+
+    def set_mandate(self, data):
+        return self._set_object('mandates', data).json()
 
     def set_membership(self, data):
         return self._set_object('person-memberships', data).json()
@@ -163,7 +194,10 @@ class ParladataApi(object):
         return self._set_object('sessions', data).json()
 
     def set_speeches(self, data):
-        return self._set_object('speeches', data).json()
+        try:
+            return self._set_object('speeches', data).json()
+        except:
+            return {}
 
     def set_ballots(self, data):
         return self._set_object('ballots', data).json()
@@ -190,7 +224,13 @@ class ParladataApi(object):
         return self._patch_object(f'votes/{id}', data).json()
 
     def set_legislation(self, data):
-        return self._set_object('legislation', data).json()
+        response = self._set_object('legislation', data)
+        try:
+            data = response.json()
+        except:
+            logger.warning(response.content)
+            return {}
+        return data
 
     def patch_legislation(self, id, data):
         return self._patch_object(f'legislation/{id}', data).json()
@@ -200,7 +240,7 @@ class ParladataApi(object):
         return self._set_object('agenda-items', data).json()
 
     def upload_image(self, endpoint, url):
-        file_name = f'parlaparser/files/{endpoint}.jpg'
+        file_name = f'/tmp/{endpoint}.jpg'
         response = requests.get(url)
         with open(file_name, 'wb') as f:
             f.write(response.content)
@@ -216,9 +256,10 @@ class ParladataApi(object):
 
     def parse_name_prefix(self, name):
         prefixes = [
+            'doc',
             'dr',
             'mag',
-            'prof'
+            'prof',
         ]
 
         tokenized_name = name.split(' ')

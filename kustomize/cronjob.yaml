@@ -1,9 +1,9 @@
-apiVersion: batch/v1beta1
+apiVersion: batch/v1
 kind: CronJob
 metadata:
   name: parlameter-update-flow
 spec:
-  schedule: "0 2 * * *"
+  schedule: "0 2,8,14,20 * * *"
   successfulJobsHistoryLimit: 1
   failedJobsHistoryLimit: 2
   jobTemplate:
@@ -20,19 +20,23 @@ spec:
               - name: PARSER_MANDATE_START_DATE
                 value: '2018-06-22'
               - name: PARSER_MAIN_ORG_ID
-                value: '1'
+                value: '137'
               - name: PARSER_MANDATE_ID
-                value: '1'
+                value: '2'
+              - name: INSTALATION_NAME
+                value: Slovenija
+              - name: PARSER_INTERVAL_HOURS
+                value: '6'
             envFrom:
               - secretRef:
-                  name: parladata-credentials
+                  name: parladata-slovenija-credentials
               - secretRef:
                   name: parlaparser-slovenija-credentials
             resources:
               requests:
                 memory: 1Gi # OOMKilled
-                cpu: 300m
+                cpu: 600m
               limits:
                 memory: 1Gi # OOMKilled
-                cpu: 300m
+                cpu: 600m
           restartPolicy: Never

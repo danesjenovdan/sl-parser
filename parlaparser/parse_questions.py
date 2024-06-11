@@ -11,6 +11,8 @@ from parlaparser.utils.methods import get_values
 class QuestionParser(object):
     def __init__(self, storage):
         self.storage = storage
+        self.question_storage = storage.question_storage
+        self.question_storage.load_data()
         locale.setlocale(locale.LC_TIME, "sl_SI")
         self.documents = {}
 
@@ -30,17 +32,12 @@ class QuestionParser(object):
                 raise Exception('key_error')
         self.document_keys = self.documents.keys()
 
-    def parse(self, session_number=None, session_type=None):
-
-        parse_speeches = True
-        parse_votes = False
-
-        mandate = 'VIII'
+    def parse(self):
         url = f'https://fotogalerija.dz-rs.si/datoteke/opendata/VPP.XML'
         response = requests.get(url)
-        with open(f'parlaparser/files/VPP.XML', 'wb') as f:
+        with open(f'/tmp/VPP.XML', 'wb') as f:
             f.write(response.content)
-        with open('parlaparser/files/VPP.XML', 'rb') as data_file:
+        with open('/tmp/VPP.XML', 'rb') as data_file:
             data = xmltodict.parse(data_file, dict_constructor=dict)
 
         # load documents from XML
@@ -57,6 +54,7 @@ class QuestionParser(object):
             title = question_card['KARTICA_NASLOV']
             recipient_text = question_card['KARTICA_NASLOVLJENEC']
             question_type_text = question_card['KARTICA_VRSTA']
+            question_unid = question_card['UNID']
             timestamp = datetime.strptime(date, '%Y-%m-%d')
 
             if question_type_text == 'PP':
@@ -73,8 +71,11 @@ class QuestionParser(object):
                 'recipient_text': recipient_text,
                 'type_of_question': question_type,
                 'timestamp': timestamp.isoformat(),
+                'gov_id': question_unid,
+                'mandate': self.storage.mandate_id,
             }
-            if self.storage.check_if_question_is_parsed(question_data):
+            if self.question_storage.check_if_question_is_parsed(question_data):
+                print('question is alredy parsed')
                 continue
 
             print(f'{authors}: {title}')
@@ -86,17 +87,17 @@ class QuestionParser(object):
 
             people_ids = []
             for author in authors:
-                person_id, added_person = self.storage.get_or_add_person(
+                person = self.storage.people_storage.get_or_add_person(
                     author,
                 )
-                people_ids.append(person_id)
+                people_ids.append(person.id)
 
             question_data.update({
                 'person_authors': people_ids
                 }
             )
 
-            question = self.storage.set_question(question_data)
+            question = self.question_storage.set_question(question_data)
 
             question_id = question['id']
 

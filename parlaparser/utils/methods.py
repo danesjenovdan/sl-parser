@@ -11,3 +11,5 @@ def get_values(data, key='UNID'):
         return output
     elif isinstance(data, str):
         return [data]
+    else:
+        return []
