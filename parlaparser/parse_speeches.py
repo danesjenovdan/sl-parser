@@ -502,4 +502,4 @@ class SpeechParser(object):
 
 
 if __name__ == '__main__':
-    speech_parser = SpeechParser(TEST_TRANSCRIPT_URL)
+    speech_parser = SpeechParser(None, [TEST_TRANSCRIPT_URL], None, None)
