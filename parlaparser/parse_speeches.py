@@ -462,8 +462,8 @@ class SpeechParser(object):
             person = self.storage.people_storage.get_or_add_person(
                 speech['person'].strip()
             )
-            # skip adding speech if has lover order than last_added_index [for sessions in review]
-            if last_added_index and the_order < last_added_index:
+            # skip adding speech if has lover and equal order than last_added_index [for sessions in review]
+            if last_added_index and the_order <= last_added_index:
                 print('This speech is already parsed')
                 continue
 
@@ -502,4 +502,4 @@ class SpeechParser(object):
 
 
 if __name__ == '__main__':
-    speech_parser = SpeechParser(TEST_TRANSCRIPT_URL)
+    speech_parser = SpeechParser(None, [TEST_TRANSCRIPT_URL], None, None)
