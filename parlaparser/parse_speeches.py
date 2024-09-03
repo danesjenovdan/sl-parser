@@ -459,9 +459,9 @@ class SpeechParser(object):
         speech_objs = []
         for order, speech in enumerate(self.page_content):
             the_order = start_order + order + 1
-            person = self.storage.people_storage.get_or_add_person(
-                speech['person'].strip()
-            )
+            person = self.storage.people_storage.get_or_add_object({
+                "name": speech['person'].strip()
+            })
             # skip adding speech if has lover and equal order than last_added_index [for sessions in review]
             if last_added_index and the_order <= last_added_index:
                 print('This speech is already parsed')

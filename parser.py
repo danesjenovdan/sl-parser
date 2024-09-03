@@ -3,7 +3,11 @@ from parlaparser.parse_sessions import SessionParser
 from parlaparser.parse_legislation import LegislationParser
 from parlaparser.parse_questions import QuestionParser
 from parlaparser.parse_votes_xml import VotesParser
-from parlaparser.utils.storage.storage import DataStorage
+
+from parladata_base_api.storages.storage import DataStorage
+from parladata_base_api.storages.vote_storage import Vote
+from parladata_base_api.storages.vote_storage import Motion
+from settings import MANDATE, MANDATE_STARTIME, MAIN_ORG_ID, API_URL, API_AUTH, MANDATE_GOV_ID
 
 import sentry_sdk
 import os
@@ -19,7 +23,12 @@ sentry_sdk.init(
 )
 
 
-storage = DataStorage()
+storage = DataStorage(
+    MANDATE, MANDATE_STARTIME, MAIN_ORG_ID, API_URL, API_AUTH[0], API_AUTH[1]
+)
+storage.MANDATE_GOV_ID = MANDATE_GOV_ID
+Motion.keys = ["datetime"]
+Vote.keys = ["timestamp"]
 
 parse_sifrant = MembershipsParser(storage)
 parse_sifrant.parse()

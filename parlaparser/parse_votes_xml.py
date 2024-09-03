@@ -1,10 +1,7 @@
 import requests
-from urllib import parse
-from datetime import datetime
 import sentry_sdk
 import xmltodict
 
-from parlaparser.settings import BASE_URL
 
 SESSION_TYPE = {
     'redna': 'regular',
@@ -22,8 +19,6 @@ ROMAN_NUMERALS_MAP = {
 class VotesParser(object):
     def __init__(self, storage):
         self.storage = storage
-        self.storage.legislation_storage.load_data()
-
 
 
     def parse(self):
@@ -78,7 +73,7 @@ class VotesParser(object):
 
                     session_gov_id = f'{self.storage.MANDATE_GOV_ID} {org_gov_id_short} - {org_name.strip()} - {session_gov_id_short}'
 
-                session = self.storage.session_storage.add_or_get_session({
+                session = self.storage.session_storage.get_or_add_object({
                     'name': session_name,
                     'gov_id': session_gov_id,
                     'organization': organization.id,
@@ -95,7 +90,7 @@ class VotesParser(object):
                     epa = f'{epa}-{xml_mandate}'
                 uid = None
 
-                if self.storage.vote_storage.check_if_motion_is_parsed({'datetime': timestamp}):
+                if session.vote_storage.check_if_motion_is_parsed({'datetime': timestamp}):
                     print('this vote is already parsed')
                     continue
 
@@ -111,19 +106,16 @@ class VotesParser(object):
                 tocka = vote_xml['TOCKA']
                 vote_id = self.save_data(session, title, timestamp, timestamp, epa=epa)
                 ballots = vote_xml['SEZNAM']['VALUE']
-                self.save_ballots(vote_id, ballots)
+                self.save_ballots(session, vote_id, ballots)
 
     def save_data(self, session, title, start_time, uid, epa=''):
         legislation_id = None
         if epa:
-            if self.storage.legislation_storage.is_law_parsed(epa):
-                legislation_id = self.storage.legislation_storage.legislation[epa.lower()].id
-            else:
-                legislation = self.storage.legislation_storage.set_law({
-                    'epa': epa,
-                    'mandate': self.storage.mandate_id,
-                })
-                legislation_id = legislation.id
+            legislation = self.storage.legislation_storage.update_or_add_law({
+                'epa': epa,
+                'mandate': self.storage.mandate_id,
+            })
+            legislation_id = legislation.id
 
         motion = {
             'title': title,
@@ -134,24 +126,14 @@ class VotesParser(object):
         }
         if legislation_id:
             motion['law'] = legislation_id
-        vote = {
-            'name': title,
-            'timestamp': start_time,
-            'session': session.id,
-        }
-        motion_obj = self.storage.vote_storage.set_motion(motion)
-        try:
-            motion_id = motion_obj.id
-        except Exception as e:
-            # skip adding vote because adding motion was fail
-            sentry_sdk.capture_exception(e)
 
-        vote['motion'] = motion_id
-        vote_obj = self.storage.vote_storage.set_vote(vote)
-        vote_id = int(vote_obj['id'])
+        
+        motion_obj = session.vote_storage.get_or_add_object(motion)
+
+        vote_id = int(motion_obj.vote.id)
         return vote_id
 
-    def save_ballots(self, vote_id, ballots):
+    def save_ballots(self, session, vote_id, ballots):
         ballots_for_save = []
         for ballot_str in ballots:
             data = ballot_str.split('|')
@@ -159,9 +141,9 @@ class VotesParser(object):
                 name, kvorum, option = data
             else:
                 name, pg, kvorum, option = data
-            person = self.storage.people_storage.get_or_add_person(
-                name
-            )
+            person = self.storage.people_storage.get_or_add_object({
+                "name": name
+            })
             person_option = ''
             if kvorum == '_':
                 person_option = 'absent'
@@ -178,4 +160,4 @@ class VotesParser(object):
                 'option': person_option,
                 'vote': vote_id
             })
-        self.storage.vote_storage.set_ballots(ballots_for_save)
+        session.vote_storage.set_ballots(ballots_for_save)

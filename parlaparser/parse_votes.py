@@ -5,14 +5,12 @@ from urllib import parse
 from datetime import datetime
 import sentry_sdk
 
-from parlaparser.settings import BASE_URL
+from settings import BASE_URL
 
 class VotesParser(object):
     def __init__(self, storage, session):
         self.session = session
         self.storage = storage
-        self.session.load_votes()
-        self.storage.legislation_storage.load_data()
 
     def parse_votes(self, request_session, htree):
         tables = htree.cssselect('table.dataTableExHov')
@@ -60,14 +58,11 @@ class VotesParser(object):
 
                 legislation_id = None
                 if epa:
-                    if self.storage.legislation_storage.is_law_parsed(epa):
-                        legislation_id = self.storage.legislation_storage.legislation[epa].id
-                    else:
-                        legislation = self.storage.legislation_storage.set_law({
-                            'epa': epa,
-                            'mandate': self.storage.mandate_id,
-                        })
-                        legislation_id = legislation.id
+                    legislation = self.storage.legislation_storage.update_or_add_law({
+                        'epa': epa,
+                        'mandate': self.storage.mandate_id,
+                    })
+                    legislation_id = legislation.id
 
                 motion = {
                     'title': title,
@@ -78,21 +73,10 @@ class VotesParser(object):
                 }
                 if legislation_id:
                     motion['law'] = legislation_id
-                vote = {
-                    'name': title,
-                    'timestamp': start_time.isoformat(),
-                    'session': self.session.id,
-                }
-                motion_obj = self.session.vote_storage.set_motion(motion)
-                try:
-                    motion_id = motion_obj.id
-                except Exception as e:
-                    # skip adding vote because adding motion was fail
-                    sentry_sdk.capture_exception(e)
-                    continue
-                vote['motion'] = motion_id
-                vote_obj = self.session.vote_storage.set_vote(vote)
-                vote_id = int(vote_obj['id'])
+
+                motion_obj = self.session.vote_storage.get_or_add_object(motion)
+
+                vote_id = int(motion_obj.vote.id)
 
                 self.save_ballots(parsed_ballots['ballots'], vote_id)
 
@@ -108,7 +92,7 @@ class VotesParser(object):
                 #     }
                 #     if 'law' in motion.keys():
                 #         link_data.update({'law': motion['law']})
-                #     self.storage.set_link(link_data)
+                #     self.storage.parladata_api.links.set(link_data)
 
             # follow pagination
             try:
@@ -192,9 +176,9 @@ class VotesParser(object):
     def save_ballots(self, ballots, vote_id):
         ballots_for_save = []
         for ballot in ballots:
-            person = self.storage.people_storage.get_or_add_person(
-                ballot['voter']
-            )
+            person = self.storage.people_storage.get_or_add_object({
+                "name": ballot['voter']
+            })
             person_option = ''
             kvorum = ballot['kvorum']
             option = ballot['option']

@@ -2,11 +2,14 @@ import requests
 import logging
 
 from collections import defaultdict
+from parladata_base_api.storages.storage import DataStorage
 
-from parlaparser.utils.storage import DataStorage
+from settings import MANDATE, MANDATE_STARTIME, MAIN_ORG_ID, API_URL, API_AUTH
+
 
 logger = logging.getLogger('logger')
 
+# odl parlameter
 BASE_URL = 'https://data.nov.parlameter.si/v1'
 
 CLASSIFICATIONS = [
@@ -55,7 +58,9 @@ def role_mapper(role):
     }[role]
 
 def copy_old_data():
-    storage = DataStorage()
+    storage = DataStorage(
+        MANDATE, MANDATE_STARTIME, MAIN_ORG_ID, API_URL, API_AUTH[0], API_AUTH[1]
+    )
 
     orgs_map_ids = {}
     people_map_ids = {}
@@ -64,7 +69,7 @@ def copy_old_data():
     people_memberships = defaultdict(list)
     orgs = get_objects('organizations')
     for org in orgs:
-        organization = storage.organization_storage.get_or_add_organization_object(
+        organization = storage.organization_storage.get_or_add_object(
             {
                 'name': org['name'],
                 'parser_names': '|'.join(org['name_parser'].split(',')) if org['name_parser'] else org['name'],
@@ -84,7 +89,7 @@ def copy_old_data():
 
     areas = get_objects('areas')
     for area in areas:
-        new_area_obj = storage.set_area({
+        new_area_obj = storage.area_storage.get_or_add_object({
             'name': area['name'],
             'classification': area['calssification'],
         })
@@ -107,7 +112,7 @@ def copy_old_data():
         if not person['id'] in members_ids:
             continue
         print(person)
-        person = storage.people_storage.get_or_add_person_object(
+        person = storage.people_storage.get_or_add_object(
             {
                 'name': person['name'],
                 'parser_names': '|'.join(person['name_parser'].split(',')),
@@ -121,7 +126,7 @@ def copy_old_data():
 
         print('added person:', person.name)
         for membership in people_memberships[person.id]:
-            storage.add_membership(
+            storage.membership_storage.get_or_add_object(
                 {
                     'member': person.id,
                     'organization': orgs_map_ids[membership['organization']],

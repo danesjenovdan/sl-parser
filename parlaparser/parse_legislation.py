@@ -9,17 +9,15 @@ from datetime import datetime
 from lxml import html
 from enum import Enum
 
-from parlaparser.settings import BASE_URL, MANDATE_GOV_ID
+from settings import BASE_URL, MANDATE_GOV_ID
 from parlaparser.utils.methods import get_values
-from parlaparser.utils.storage.legislation_storage import LegislationStorage
 
 
 class LegislationParser(object):
     def __init__(self, storage):
         self.storage = storage
         self.legislation_storage =  self.storage.legislation_storage
-        self.legislation_storage.load_data()
-        locale.setlocale(locale.LC_TIME, "sl_SI")
+        locale.setlocale(locale.LC_TIME, "sl_SI.utf-8")
         self.documents = {}
 
     def load_documents(self, data, key='PZ'):
@@ -162,7 +160,7 @@ class LegislationParser(object):
                     legislation_session = legislation_session.strip('0').lower() + ' seja'
 
                 if champion_wb:
-                    champion_wb = self.storage.organization_storage.get_or_add_organization(champion_wb).id
+                    champion_wb = self.storage.organization_storage.get_or_add_object(champion_wb).id
 
                 connected_legislation = wraped_legislation.get('POVEZANI_PREDPISI', [])
                 connected_legislation_unids = get_values(connected_legislation)
@@ -181,7 +179,7 @@ class LegislationParser(object):
                     'procedure_type': legislation_procedure_type,
                     'mdt_fk': champion_wb,
                     'timestamp': date_iso,
-                    'classification': self.legislation_storage.get_legislation_classifications_id(legislation_file['type']),
+                    'classification': self.legislation_storage.get_legislation_classifications_by_name(legislation_file['type']),
                     'mandate': self.storage.mandate_id
                 }
                 self.add_or_update_legislation(
@@ -205,7 +203,7 @@ class LegislationParser(object):
                     if session_id:
                         data.update(session=session_id)
                 try:
-                    legislation_consideration = self.legislation_storage.prepare_and_set_legislation_consideration(data)
+                    legislation_consideration = self.prepare_data_and_set_legislation_consideration(data)
                     if legislation_consideration.is_new:
                         self.add_docs(
                             document_unids,
@@ -233,7 +231,32 @@ class LegislationParser(object):
                     epa=epa
                 )
 
+    def prepare_data_and_set_legislation_consideration(self, legislation_consideration):
+        law = self.legislation_storage.update_or_add_law({
+            'epa': legislation_consideration['epa']
+        })
+        procedure_phase = self.legislation_storage.get_procedure_phase({
+            'name': legislation_consideration.pop('consideration_phase')
+        })
+        if not procedure_phase:
+            sentry_sdk.capture_message(f"There is new procedure phase {legislation_consideration.pop('consideration_phase')}")
+            return
 
+        organization_name = legislation_consideration['organization']
+        if organization_name:
+            organization = self.storage.organization_storage.get_or_add_object({
+                "name": organization_name,
+            })
+            organization_id = organization.id
+        else:
+            organization_id = None
+
+        legislation_consideration.update({
+            'organization': organization_id,
+            'procedure_phase': procedure_phase.id,
+            'legislation': law.id
+        })
+        return self.legislation_storage.prepare_and_set_legislation_consideration(legislation_consideration)
 
     def add_or_update_legislation(self, legislation_obj, document_unids):
         law = self.legislation_storage.update_or_add_law(legislation_obj)
@@ -254,7 +277,7 @@ class LegislationParser(object):
                         'name': doc_title,
                     }
                     link_data.update(document_parent_object)
-                    self.storage.set_link(link_data)
+                    self.storage.parladata_api.links.set(link_data)
 
     def remove_leading_zeros(self, word, separeted_by=[',', '-', '/']):
         for separator in separeted_by:
