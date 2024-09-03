@@ -10,9 +10,7 @@ from datetime import datetime
 
 from lxml import html
 from enum import Enum
-from urllib import parse
 
-from parlaparser.settings import BASE_URL, MANDATE, MANDATE_GOV_ID
 from parlaparser.utils.methods import get_values
 from parlaparser.parse_speeches import SpeechParser
 from parlaparser.parse_votes import VotesParser
@@ -37,7 +35,7 @@ SESSION_TYPES = {
 class SessionParser(object):
     def __init__(self, storage):
         self.storage = storage
-        locale.setlocale(locale.LC_TIME, "sl_SI")
+        locale.setlocale(locale.LC_TIME, "sl_SI.utf-8")
         self.documents = {}
         self.magnetograms = {}
 
@@ -116,7 +114,7 @@ class SessionParser(object):
 
                 uid = session['KARTICA_SEJE']['UNID'].split('|')[1]
 
-                session_url = f'{url_group["dz_url"]}/?mandat={MANDATE_GOV_ID}&seja= {session_name}.%20{session_type_xml}&uid={uid}'
+                session_url = f'{url_group["dz_url"]}/?mandat={self.storage.MANDATE_GOV_ID}&seja= {session_name}.%20{session_type_xml}&uid={uid}'
 
                 print(f'Parsing session with url {session_url}')
 
@@ -191,9 +189,9 @@ class SessionParser(object):
                 speech_unids = get_values(speech_pages)
 
                 if organization_name:
-                    organization = self.storage.organization_storage.get_or_add_organization(
-                        organization_name + ' ' + MANDATE_GOV_ID,
-                    )
+                    organization = self.storage.organization_storage.get_or_add_object({
+                        "name": organization_name + ' ' + self.storage.MANDATE_GOV_ID,
+                    })
                     organization_id = organization.id
                     org_gov_id = organization.gov_id
                     org_gov_id_short = org_gov_id[2:]
@@ -206,7 +204,7 @@ class SessionParser(object):
                     session_gov_id = f'{self.storage.MANDATE_GOV_ID} Državni zbor - {full_session_name}. {session_type_xml}'
 
                 # get or add session
-                current_session = self.storage.session_storage.add_or_get_session({
+                current_session = self.storage.session_storage.get_or_add_object({
                     'name': f'{session_name}. {session_type_xml.lower()} seja',
                     'organization': organization_id,
                     'organizations': [organization_id],
@@ -232,7 +230,7 @@ class SessionParser(object):
                 # session is reviewed, reload speeches
                 if not session_in_review and was_session_in_review:
                     # set session to not in review
-                    self.storage.session_storage.patch_session(current_session, {'in_review': False})
+                    current_session.patch_session({'in_review': False})
 
                     if parse_speeches:
                         # unvalidate speeches
@@ -243,7 +241,7 @@ class SessionParser(object):
 
                 elif session_in_review and not was_session_in_review:
                     # set session to not in review
-                    self.storage.session_storage.patch_session(current_session, {'in_review': True})
+                    current_session.patch_session({'in_review': True})
                     parse_new_speeches = True
 
                 elif session_in_review and was_session_in_review:
@@ -263,7 +261,7 @@ class SessionParser(object):
                                     'url': doc_url,
                                     'name': doc_title,
                                 }
-                                self.storage.set_link(link_data)
+                                self.storage.parladata_api.links.set(link_data)
 
                 # parsing VOTES
                 # TODO check, the condition may stink

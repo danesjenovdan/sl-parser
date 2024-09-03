@@ -12,8 +12,7 @@ class QuestionParser(object):
     def __init__(self, storage):
         self.storage = storage
         self.question_storage = storage.question_storage
-        self.question_storage.load_data()
-        locale.setlocale(locale.LC_TIME, "sl_SI")
+        locale.setlocale(locale.LC_TIME, "sl_SI.utf-8")
         self.documents = {}
 
     def load_documents(self, data):
@@ -87,9 +86,9 @@ class QuestionParser(object):
 
             people_ids = []
             for author in authors:
-                person = self.storage.people_storage.get_or_add_person(
-                    author,
-                )
+                person = self.storage.people_storage.get_or_add_object({
+                    "name": author,
+                })
                 people_ids.append(person.id)
 
             question_data.update({
@@ -97,9 +96,9 @@ class QuestionParser(object):
                 }
             )
 
-            question = self.question_storage.set_question(question_data)
+            question = self.question_storage.get_or_add_object(question_data)
 
-            question_id = question['id']
+            question_id = question.id
 
             for doc_unid in document_unids:
                 if doc_unid in self.document_keys:
@@ -111,4 +110,4 @@ class QuestionParser(object):
                             'url': doc_url,
                             'name': doc_title,
                         }
-                        self.storage.set_link(link_data)
+                        self.storage.parladata_api.links.set(link_data)

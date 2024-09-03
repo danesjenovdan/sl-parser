@@ -3,7 +3,7 @@ import xmltodict
 import re
 
 from datetime import datetime
-from parlaparser.settings import MANDATE_STARTIME
+from settings import MANDATE_STARTIME
 
 from collections import defaultdict
 
@@ -100,11 +100,10 @@ class MembershipsParser(object):
             # for tip in data['SIF']['TIPI_POVEZAV']['TIP_POVEZAVE']:
             #     connection_types[tip['TIP_POVEZAVE_SIFRA']] = self.get_root_or_text(tip['TIP_POVEZAVE_NAZIV']['M'], 'AN')
 
-
             # add people
             print('Adding people')
             for person in data['SIF']['OSEBE']['OSEBA']:
-                #continue
+                # continue
                 name = f'{person["OSEBA_IME"]} {person["OSEBA_PRIIMEK"]}'
 
                 izkaznica_string = self.get_root_or_text(person['OSEBA_OSEBNA_IZKAZNICA'])
@@ -115,7 +114,7 @@ class MembershipsParser(object):
                 # TODO create parsing gender [parladata api] person['OSEBA_SPOL']
                 # TODO okraj [parladata api] person['OSEBA_POSLANSKI_MANDAT']['POSLANSKI_MANDAT_OKRAJ_NAZIV']
                 # TODO update parsername with OSEBA_SIFRA if person exists
-                new_person = self.storage.people_storage.get_or_add_person_object(
+                new_person = self.storage.people_storage.get_or_add_object(
                     {
                         'parser_names': f'{name}|{person["OSEBA_SIFRA"]}',
                         'name': name,
@@ -123,8 +122,8 @@ class MembershipsParser(object):
                     }
                 )
                 # update existing person with GOV ID
-                #if not new_person.is_new:
-                #   self.storage.people_storage.add_person_parser_name(new_person, person["OSEBA_SIFRA"])
+                # if not new_person.is_new:
+                #   new_person.add_parser_name(person["OSEBA_SIFRA"])
 
             # add groups
             print('Adding groups')
@@ -157,7 +156,7 @@ class MembershipsParser(object):
                 }
                 if acronym:
                     group_data.update({'acronym': acronym})
-                organization = self.storage.organization_storage.get_or_add_organization_object(
+                organization = self.storage.organization_storage.get_or_add_object(
                     group_data,
                 )
                 org_key_id[group["SUBJEKT_FUNKCIJA_SIFRA"]] = organization.id
@@ -176,15 +175,15 @@ class MembershipsParser(object):
 
                 print(person_gov_id, org_gov_id)
 
-                person = self.storage.people_storage.get_or_add_person(
-                    person_gov_id,
-                    add=False
+                person = self.storage.people_storage.get_or_add_object(
+                    {"name": person_gov_id},
+                    add=False,
                 )
                 # dont add memberships for people which not in ['SIF']['OSEBE']
                 if not person:
                     continue
 
-                # organization = self.storage.organization_storage.get_or_add_organization(
+                # organization = self.storage.organization_storage.get_or_add_object(
                 #     org_gov_id
                 # )
                 organization_id = org_key_id[org_gov_id]
@@ -192,7 +191,7 @@ class MembershipsParser(object):
                 role = connection_types.get(connection['POVEZAVA_SIFRA'], None)
                 if role:
                     print("Add or get person")
-                    membership = self.storage.membership_storage.add_or_get_membership(
+                    membership = self.storage.membership_storage.get_or_add_object(
                         {
                             'member': person.id,
                             'organization': organization_id,
@@ -208,25 +207,24 @@ class MembershipsParser(object):
                 for membership in organization.memberships:
                     if not membership.end_time:
                         if not membership.id in membership_ids:
-                            membership.end_time = datetime.now().isoformat()
-                            membership.set_end_time()
+                            membership.set_end_time(datetime.now().isoformat())
         return data
 
     def get_root_or_text(self, data, element='#text'):
-            if isinstance(data, str):
-                return data
-            elif isinstance(data, dict):
-                if element in data.keys():
-                    return data[element]
-                elif '#text' in data.keys():
-                    return data['#text']
-                elif 'AN' in data.keys():
-                    return data['AN']
-                else:
-                    return data
+        if isinstance(data, str):
+            return data
+        elif isinstance(data, dict):
+            if element in data.keys():
+                return data[element]
+            elif '#text' in data.keys():
+                return data['#text']
+            elif 'AN' in data.keys():
+                return data['AN']
             else:
-                print('-------CHECK THIS------', data)
                 return data
+        else:
+            print('-------CHECK THIS------', data)
+            return data
 
     def parse_birth_string(self, data):
         birth_date_str_month_regex = r'\b[0-9]{1,2}. [A-Za-z]+ [0-9]{4}'
