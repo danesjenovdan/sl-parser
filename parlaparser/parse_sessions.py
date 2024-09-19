@@ -62,7 +62,7 @@ class SessionParser(object):
         session_url_groups = [
             # TODO uncoment for parsing DZ sessions
             {
-                'url':'https://fotogalerija.dz-rs.si/datoteke/opendata/SDZ.XML',
+                'url': 'https://fotogalerija.dz-rs.si/datoteke/opendata/SDZ.XML',
                 'root_key': 'SDZ',
                 'file_name': 'SDZ.XML',
                 'dz_url': 'https://www.dz-rs.si/wps/portal/Home/seje/izbranaSeja'
@@ -188,7 +188,7 @@ class SessionParser(object):
                 speech_pages = session.get('DOBESEDNI_ZAPISI_SEJE', [])
                 speech_unids = get_values(speech_pages)
 
-                if organization_name:
+                if organization_name and url_group["root_key"] == 'SDT':
                     organization = self.storage.organization_storage.get_or_add_object({
                         "name": organization_name + ' ' + self.storage.MANDATE_GOV_ID,
                     })

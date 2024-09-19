@@ -163,7 +163,7 @@ class SpeechParser(object):
                                 self.start_time = self.start_date.replace(hour=int(hour), minute=int(minute))
                                 if self.session.start_time != self.start_time.isoformat():
                                     # print(fix)
-                                    self.session.update_time(self.start_time)
+                                    self.session.update_start_time(self.start_time)
                             except Exception as e:
                                 print(e)
                                 pass
