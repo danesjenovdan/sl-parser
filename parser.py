@@ -7,6 +7,8 @@ from parlaparser.parse_votes_xml import VotesParser
 from parladata_base_api.storages.storage import DataStorage
 from parladata_base_api.storages.vote_storage import Vote
 from parladata_base_api.storages.vote_storage import Motion
+from parladata_base_api.storages.session_storage import Session
+from parladata_base_api.storages.legislation_storage import LegislationConsiceration
 from settings import MANDATE, MANDATE_STARTIME, MAIN_ORG_ID, API_URL, API_AUTH, MANDATE_GOV_ID
 
 import sentry_sdk
@@ -29,6 +31,7 @@ storage = DataStorage(
 storage.MANDATE_GOV_ID = MANDATE_GOV_ID
 Motion.keys = ["datetime"]
 Vote.keys = ["timestamp"]
+LegislationConsiceration.keys = ["timestamp", "legislation", "procedure_phase"]
 
 parse_sifrant = MembershipsParser(storage)
 parse_sifrant.parse()
@@ -43,10 +46,16 @@ session_parser.parse()
 # use this for parse specific session
 # session_parser.parse(session_number='69', session_type='Izredna', parse_speeches=True, parse_votes=True)
 
+# # # questions
+question_parser = QuestionParser(storage)
+question_parser.parse()
+
+# Reload data storage for new session key for legislation
+Session.keys = ["name", "organizations"]
+storage = DataStorage(
+    MANDATE, MANDATE_STARTIME, MAIN_ORG_ID, API_URL, API_AUTH[0], API_AUTH[1]
+)
+storage.MANDATE_GOV_ID = MANDATE_GOV_ID
 # legislation
 legislation_parser = LegislationParser(storage)
 legislation_parser.parse()
-
-# # questions
-question_parser = QuestionParser(storage)
-question_parser.parse()
