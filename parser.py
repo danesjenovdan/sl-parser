@@ -8,7 +8,7 @@ from parladata_base_api.storages.storage import DataStorage
 from parladata_base_api.storages.vote_storage import Vote
 from parladata_base_api.storages.vote_storage import Motion
 from parladata_base_api.storages.session_storage import Session
-from parladata_base_api.storages.legislation_storage import LegislationConsiceration
+from parladata_base_api.storages.legislation_storage import LegislationConsideration
 from settings import MANDATE, MANDATE_STARTIME, MAIN_ORG_ID, API_URL, API_AUTH, MANDATE_GOV_ID
 
 import sentry_sdk
@@ -31,7 +31,7 @@ storage = DataStorage(
 storage.MANDATE_GOV_ID = MANDATE_GOV_ID
 Motion.keys = ["datetime"]
 Vote.keys = ["timestamp"]
-LegislationConsiceration.keys = ["timestamp", "legislation", "procedure_phase"]
+LegislationConsideration.keys = ["timestamp", "legislation", "procedure_phase", "session"]
 
 parse_sifrant = MembershipsParser(storage)
 parse_sifrant.parse()
