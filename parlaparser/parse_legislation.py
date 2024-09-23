@@ -25,18 +25,24 @@ class LegislationParser(object):
 
         documents = data[key].get("DOKUMENT", [])
 
-        for doc in documents:
-            doc = doc["KARTICA_DOKUMENTA"]
-            try:
-                if "PRIPONKA" in doc.keys():
-                    urls = get_values(doc["PRIPONKA"], "PRIPONKA_KLIC")
-                    self.documents[doc["UNID"]] = {
-                        "title": doc["KARTICA_NAZIV"],
-                        "urls": urls,
-                    }
-            except:
-                print(doc)
-                raise Exception("key_error")
+        for o_doc in documents:
+            doc = o_doc["KARTICA_DOKUMENTA"]
+
+            sub_doc = o_doc["PODDOKUMENTI"]
+            if "PRIPONKA" in doc.keys():
+                urls = get_values(doc["PRIPONKA"], "PRIPONKA_KLIC")
+                self.documents[doc["UNID"]] = {
+                    "title": doc["KARTICA_NAZIV"],
+                    "urls": urls,
+                }
+            elif sub_doc:
+                self.documents[doc["UNID"]] = {
+                    "title": doc["KARTICA_NAZIV"],
+                    "sub-docs": sub_doc["UNID"],
+                }
+            # except:
+            #     print(doc)
+            #     raise Exception("key_error")
         self.document_keys = self.documents.keys()
         print(len(self.documents.keys()), " documetns loaded")
 
@@ -143,7 +149,7 @@ class LegislationParser(object):
             return
         for wraped_legislation in legislation_list:
             legislation = wraped_legislation[obj_key]
-            # try:
+
             epa = self.remove_leading_zeros(legislation["KARTICA_EPA"])
             if self.mandate not in epa:
                 continue
@@ -176,11 +182,6 @@ class LegislationParser(object):
 
             connected_legislation = wraped_legislation.get("POVEZANI_PREDPISI", [])
             connected_legislation_unids = get_values(connected_legislation)
-            # except Exception as e:
-            #     print('Boooooo')
-            #     print(legislation)
-            #     print(e)
-            #     continue
 
             if array_key == "PREDPIS":  # legislation
                 law_data = {
@@ -209,6 +210,7 @@ class LegislationParser(object):
                     "organization": procedure_org,
                     "timestamp": date_iso,
                     "consideration_phase": legislation_procedure_phase,
+                    "session": None,
                 }
                 if legislation_session and champion_wb:
                     session = self.storage.session_storage.get_or_add_object(
@@ -231,19 +233,28 @@ class LegislationParser(object):
                         {"legislation_consideration": legislation_consideration.id},
                     )
 
+                    if epa == "1470-IX":
+                        print([
+                            self.get_doc_title(c_unid)
+                            for c_unid in document_unids
+                        ])
+
                     if legislation_procedure_phase.strip() == "konec postopka":
                         self.legislation_storage.set_law_as_rejected(epa)
                     elif legislation_procedure_phase.strip() == "sprejet predlog":
                         # check if procedure is call for referendum
                         is_referendum = any(
                             [
-                                self.get_doc_title(c_unid)
-                                == "Pobuda za zakonodajni referendum"
-                                for c_unid in document_unids
+                                [
+                                    self.get_doc_title(c_unid)
+                                    == "Pobuda za zakonodajni referendum"
+                                    for c_unid in document_unids
+                                ]
                             ]
                         )
+
                         if is_referendum:
-                            pass
+                            self.legislation_storage.set_law_as_in_procedure(epa)
                         else:
                             self.legislation_storage.set_law_as_enacted(epa)
                     elif (
@@ -293,9 +304,12 @@ class LegislationParser(object):
         #     organization_id = None
 
         legislation_consideration.update(
-            {"procedure_phase": procedure_phase.id, "legislation": law.id}
+            {
+                "procedure_phase": procedure_phase.id,
+                "legislation": law.id,
+            }
         )
-        print(legislation_consideration)
+        # print(legislation_consideration)
         return self.legislation_storage.prepare_and_set_legislation_consideration(
             legislation_consideration
         )
@@ -305,12 +319,12 @@ class LegislationParser(object):
         if law.is_new:
             self.add_docs(document_unids, {"legislation": law.id})
 
-    def get_doc_title(self, document_unids):
-        if not document_unids:
+    def get_doc_title(self, document_unid):
+        if not document_unid:
             return ""
-        for doc_unid in document_unids:
-            if doc_unid in self.document_keys:
-                return self.documents[doc_unid]["title"]
+
+        if document_unid in self.document_keys:
+            return self.documents[document_unid]["title"]
         return None
 
     def add_docs(self, document_unids, document_parent_object):
@@ -320,13 +334,16 @@ class LegislationParser(object):
             if doc_unid in self.document_keys:
                 document = self.documents[doc_unid]
                 doc_title = document["title"]
-                for doc_url in document["urls"]:
-                    link_data = {
-                        "url": doc_url,
-                        "name": doc_title,
-                    }
-                    link_data.update(document_parent_object)
-                    self.storage.parladata_api.links.set(link_data)
+                if "urls" in document.keys():
+                    for doc_url in document["urls"]:
+                        link_data = {
+                            "url": doc_url,
+                            "name": doc_title,
+                        }
+                        link_data.update(document_parent_object)
+                        self.storage.parladata_api.links.set(link_data)
+                elif "sub-docs" in document.keys():
+                    self.add_docs(document["sub-docs"], document_parent_object)
 
     def remove_leading_zeros(self, word, separeted_by=[",", "-", "/"]):
         for separator in separeted_by:
