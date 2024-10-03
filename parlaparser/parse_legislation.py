@@ -213,7 +213,7 @@ class LegislationParser(object):
                     "session": None,
                 }
                 if legislation_session and champion_wb:
-                    session = self.storage.session_storage.get_or_add_object(
+                    session = self.storage.session_storage.get_object_or_none(
                         {
                             "name": legislation_session,
                             "organizations": [procedure_org],
