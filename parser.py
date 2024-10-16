@@ -1,27 +1,32 @@
-from parlaparser.parse_sifrant import MembershipsParser
-from parlaparser.parse_sessions import SessionParser
-from parlaparser.parse_legislation import LegislationParser
-from parlaparser.parse_questions import QuestionParser
-from parlaparser.parse_votes_xml import VotesParser
-
-from parladata_base_api.storages.storage import DataStorage
-from parladata_base_api.storages.vote_storage import Vote
-from parladata_base_api.storages.vote_storage import Motion
-from parladata_base_api.storages.session_storage import Session
-from parladata_base_api.storages.legislation_storage import LegislationConsideration
-from settings import MANDATE, MANDATE_STARTIME, MAIN_ORG_ID, API_URL, API_AUTH, MANDATE_GOV_ID
-
-import sentry_sdk
 import os
 
-sentry_sdk.init(
-    os.getenv('SENTRY_URL', None),
-    environment=os.getenv('SENTRY_ENVIRONMENT', 'test'),
+import sentry_sdk
+from parladata_base_api.storages.legislation_storage import LegislationConsideration
+from parladata_base_api.storages.session_storage import Session
+from parladata_base_api.storages.storage import DataStorage
+from parladata_base_api.storages.vote_storage import Motion, Vote
 
+from parlaparser.parse_legislation import LegislationParser
+from parlaparser.parse_questions import QuestionParser
+from parlaparser.parse_sessions import SessionParser
+from parlaparser.parse_sifrant import MembershipsParser
+from parlaparser.parse_votes_xml import VotesParser
+from settings import (
+    API_AUTH,
+    API_URL,
+    MAIN_ORG_ID,
+    MANDATE,
+    MANDATE_GOV_ID,
+    MANDATE_STARTIME,
+)
+
+sentry_sdk.init(
+    os.getenv("SENTRY_URL", None),
+    environment=os.getenv("SENTRY_ENVIRONMENT", "test"),
     # Set traces_sample_rate to 1.0 to capture 100%
     # of transactions for performance monitoring.
     # We recommend adjusting this value in production.
-    traces_sample_rate=1.0
+    traces_sample_rate=1.0,
 )
 
 
@@ -31,7 +36,12 @@ storage = DataStorage(
 storage.MANDATE_GOV_ID = MANDATE_GOV_ID
 Motion.keys = ["datetime"]
 Vote.keys = ["timestamp"]
-LegislationConsideration.keys = ["timestamp", "legislation", "procedure_phase", "session"]
+LegislationConsideration.keys = [
+    "timestamp",
+    "legislation",
+    "procedure_phase",
+    "session",
+]
 
 parse_sifrant = MembershipsParser(storage)
 parse_sifrant.parse()
