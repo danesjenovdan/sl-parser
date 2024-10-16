@@ -1,16 +1,15 @@
-import requests
-import xmltodict
-import re
 import locale
-import sentry_sdk
-
+import re
 from datetime import datetime
-
-from lxml import html
 from enum import Enum
 
-from settings import BASE_URL, MANDATE_GOV_ID
+import requests
+import sentry_sdk
+import xmltodict
+from lxml import html
+
 from parlaparser.utils.methods import get_values
+from settings import BASE_URL, MANDATE_GOV_ID
 
 
 class LegislationParser(object):
@@ -234,10 +233,7 @@ class LegislationParser(object):
                     )
 
                     if epa == "1470-IX":
-                        print([
-                            self.get_doc_title(c_unid)
-                            for c_unid in document_unids
-                        ])
+                        print([self.get_doc_title(c_unid) for c_unid in document_unids])
 
                     if legislation_procedure_phase.strip() == "konec postopka":
                         self.legislation_storage.set_law_as_rejected(epa)
