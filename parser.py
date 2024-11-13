@@ -1,6 +1,7 @@
 import os
 
 import sentry_sdk
+from sentry_sdk import capture_exception
 from parladata_base_api.storages.legislation_storage import LegislationConsideration
 from parladata_base_api.storages.session_storage import Session
 from parladata_base_api.storages.storage import DataStorage
@@ -42,23 +43,35 @@ LegislationConsideration.keys = [
     "procedure_phase",
     "session",
 ]
-
-parse_sifrant = MembershipsParser(storage)
-parse_sifrant.parse()
+try:
+    parse_sifrant = MembershipsParser(storage)
+    parse_sifrant.parse()
+except Exception as e:
+    capture_exception(e)
 
 # session votes / speeches
-session_parser = SessionParser(storage)
-session_parser.parse(parse_speeches=True, parse_votes=False)
+try:
+    session_parser = SessionParser(storage)
+    session_parser.parse(parse_speeches=True, parse_votes=False)
+except Exception as e:
+    capture_exception(e)
 
-session_parser = VotesParser(storage)
-session_parser.parse()
+
+try:
+    session_parser = VotesParser(storage)
+    session_parser.parse()
+except Exception as e:
+    capture_exception(e)
 
 # use this for parse specific session
 # session_parser.parse(session_number='69', session_type='Izredna', parse_speeches=True, parse_votes=True)
 
 # # # questions
-question_parser = QuestionParser(storage)
-question_parser.parse()
+try:
+    question_parser = QuestionParser(storage)
+    question_parser.parse()
+except Exception as e:
+    capture_exception(e)
 
 # Reload data storage for new session key for legislation
 Session.keys = ["name", "organizations"]
