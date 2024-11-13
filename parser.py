@@ -1,6 +1,6 @@
 import os
-import sentry_sdk
 
+import sentry_sdk
 from parladata_base_api.storages.legislation_storage import LegislationConsideration
 from parladata_base_api.storages.session_storage import Session
 from parladata_base_api.storages.storage import DataStorage
