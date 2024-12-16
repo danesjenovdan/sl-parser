@@ -62,7 +62,7 @@ class MembershipsParser(object):
             "SEPS": "deputy",  #'Deputy Group Secretary',
             #'TDZ': 'Secretary of the National Assembly',
             #'VK': 'Head of the Office of the President',
-            #'VO': 'Leader',
+            "VO": "president",
             #'VOD': 'Head of Section',
             #'VS': 'Head of Division',
             #'VSE': 'Head of Division - Secretary',
