@@ -29,8 +29,14 @@ class MembershipsParser(object):
     def __init__(self, storage):
         self.storage = storage
         self.storage.membership_storage.load_data()
+        self.membership_storage = self.storage.membership_storage
 
     def parse(self):
+        self.parse_document()
+        self.prepare_data_structure()
+        self.membership_storage.refresh_per_person_memberships()
+
+    def parse_document(self):
 
         active_memberships = defaultdict(list)
 
@@ -39,6 +45,7 @@ class MembershipsParser(object):
             "committee": "committee",
             "drugo": "other",
             "skupina prijateljstva": "friendship_group",
+            "stalna delegacija": "delegation",
         }
 
         connection_types = {
@@ -49,7 +56,7 @@ class MembershipsParser(object):
             #'NP': None,
             "NPP": "deputy",
             #'NSDZ': 'Deputy Secretary General',
-            #'NV': 'Deputy Leader',
+            "NV": "deputy",
             #'NVSL': 'Deputy Head of Service',persident
             "PDZ": "president",  #'president of National Assembly',
             "POS": "deputy",
@@ -70,6 +77,7 @@ class MembershipsParser(object):
         }
         connections = []
         org_key_id = {}
+        ps_key_id = {}
         subject_types = {}
         ps_keys = []
 
@@ -134,7 +142,7 @@ class MembershipsParser(object):
                 subject_type_key = group["SUBJEKT_FUNKCIJA_TIP"]
 
                 # Skip subjects pf type [Drugo, Funkcija, Stalna Delegacija, Skupina poslank in poslancev]
-                if subject_type_key in ["D", "F", "SD", "SK"]:
+                if subject_type_key in ["D", "F", "SK"]:
                     continue
                 subject_type_str = subject_types[subject_type_key]
                 name = self.get_root_or_text(group["SUBJEKT_FUNKCIJA_NAZIV"])
@@ -146,7 +154,17 @@ class MembershipsParser(object):
                     None
                 acronym = group.get("SUBJEKT_FUNKCIJA_NAZIV", None)
                 if subject_type_key == "PS":
-                    ps_keys.append(group["SUBJEKT_FUNKCIJA_SIFRA"])
+                    group_data = {
+                        "name": f"{name}",
+                        "parser_names": f'{name}|{group["SUBJEKT_FUNKCIJA_SIFRA"]}',
+                        "gov_id": group["SUBJEKT_FUNKCIJA_SIFRA"],
+                        "classification": "pg",
+                        "founding_date": founding_date,
+                    }
+                    organization = self.storage.organization_storage.get_or_add_object(
+                        group_data,
+                    )
+                    ps_key_id[group["SUBJEKT_FUNKCIJA_SIFRA"]] = organization.id
 
                 classification = group_classifications[subject_type_str.lower()]
                 if classification not in ["committee", "friendship_group"]:
@@ -169,16 +187,28 @@ class MembershipsParser(object):
             # add memberships
             print("Adding memberships")
             org_keys = org_key_id.keys()
-            print(ps_keys, len(ps_keys))
+            ps_keys = ps_key_id.keys()
+
+            org_key_id.update(ps_key_id)
+            self.per_person_data = defaultdict(lambda: defaultdict(list))
             for connection in data["SIF"]["POVEZAVE"]["POVEZAVA"]:
                 # skip adding membership if subject type is in [Drugo, Funkcija, Stalna Delegacija]
-                if connection["SUBJEKTI_FUNKCIJA_SIFRA"] not in org_keys:
+                if connection["SUBJEKTI_FUNKCIJA_SIFRA"] in ps_keys:
+                    typ = "party"
+                elif connection["SUBJEKTI_FUNKCIJA_SIFRA"] in org_keys:
+                    typ = "commitee"
+                else:
                     continue
+
+                ha = False
 
                 person_gov_id = connection["OSEBA_SIFRA"]
                 org_gov_id = connection["SUBJEKTI_FUNKCIJA_SIFRA"]
 
-                print(person_gov_id, org_gov_id)
+                if person_gov_id == "P415" and org_gov_id == "PS036":
+                    print("Gotcha")
+                    ha = True
+                # print(person_gov_id, org_gov_id)
 
                 person = self.storage.people_storage.get_or_add_object(
                     {"name": person_gov_id},
@@ -191,31 +221,67 @@ class MembershipsParser(object):
                 # organization = self.storage.organization_storage.get_or_add_object(
                 #     org_gov_id
                 # )
-                organization_id = org_key_id[org_gov_id]
+                org_id = org_key_id.get(org_gov_id)
+                if not org_id:
+                    print("Organization not found", org_gov_id)
+                    continue
+                organization = self.storage.organization_storage.get_organization_by_id(
+                    org_id,
+                )
+                if organization.classification == "friendship_group":
+                    is_voter = False
+                else:
+                    is_voter = True
 
                 role = connection_types.get(connection["POVEZAVA_SIFRA"], None)
                 if role:
                     print("Add or get person")
-                    membership = self.storage.membership_storage.get_or_add_object(
+                    self.per_person_data[person.id][typ].append(
                         {
-                            "member": person.id,
-                            "organization": organization_id,
+                            "is_voter": is_voter,
+                            "member": person,
+                            "organization": organization,
                             "on_behalf_of": None,
-                            "start_time": datetime.now().isoformat(),
                             "role": role,
+                            "type": typ,
                             "mandate": self.storage.mandate_id,
                         }
                     )
-                    active_memberships[organization_id].append(membership.id)
-            for i, membership_ids in active_memberships.items():
-                organization = self.storage.organization_storage.get_organization_by_id(
-                    i
-                )
-                for membership in organization.memberships:
-                    if not membership.end_time:
-                        if not membership.id in membership_ids:
-                            membership.set_end_time(datetime.now().isoformat())
-        return data
+                if ha:
+                    print(
+                        {
+                            "is_voter": True,
+                            "member": person,
+                            "organization": organization,
+                            "role": role,
+                            "type": typ,
+                        },
+                        person.id,
+                    )
+
+    def prepare_data_structure(self):
+        self.membership_storage.temporary_data = self.per_person_data
+
+        main_org = self.storage.organization_storage.get_organization_by_id(
+            self.storage.main_org_id
+        )
+
+        for person_memberships in self.per_person_data.values():
+            party = person_memberships.get("party", None)
+            if party:
+                party = party[0]
+                if (
+                    "Nepovezani poslanec" in party["organization"].name
+                    or "Nepovezana poslanka" in party["organization"].name
+                ):
+                    party["organization"] = None
+                party["on_behalf_of"] = party["organization"]
+                party["organization"] = main_org
+
+            for membership in person_memberships.get("commitee", []):
+                membership["on_behalf_of"] = party["organization"]
+
+        self.membership_storage.temporary_data = self.per_person_data
 
     def get_root_or_text(self, data, element="#text"):
         if isinstance(data, str):
