@@ -113,6 +113,11 @@ class VotesParser(object):
                 elif vote_zveza:
                     title = vote_zveza
                 else:
+                    print(vote_xml)
+                    sentry_sdk.capture_message(
+                        f"Vote without title vote_xml: {vote_xml} session_name: {session_name} timestamp: {timestamp}"
+                    )
+                    continue
                     raise Exception("No title")
 
                 tocka = vote_xml["TOCKA"]
