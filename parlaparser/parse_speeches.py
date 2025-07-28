@@ -124,7 +124,8 @@ class SpeechParser(object):
     def parse_content(self, htree):
         # output_text = htree.cssselect(".fieldset span.outputText")[0]
         try:
-            output_text = htree.cssselect("form > div.fieldset")[0]
+            # output_text = htree.cssselect("form > div.fieldset")[0]
+            output_text = htree.cssselect("form > div")[1]
         except:
             return
         etree.strip_tags(output_text, "font")
