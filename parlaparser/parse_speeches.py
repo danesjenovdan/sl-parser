@@ -28,6 +28,7 @@ class SpeechParser(object):
     REGEX_START_WIERD_WB_SESSION = r"Odprti .{3} seje se je začel ob \d\d"
     FIND_PERSON = r"(^(Nadaljevanje |nadaljevanje )?[A-ZČŠŽĆÖĐÒÓÔÖÜÛÚÙÀÁÄÂÌÍÎÏ.]{3,25}\s*(?:[(A-ZČŠŽĆÖĐÒÓÔÖÜÛÚÙÀÁÄÂÌÍÎÏ)])*? [A-ZČŠŽĆÖĐÒÓÔÖÜÛÚÙÀÁÄÂÌÍÎÏ. ]{3,25}){1}(\([A-ZČŠŽĆÖĐÒÓÔÖÜÛÚÙÀÁÄÂÌÍÎÏa-zčšžćöđòóôöüûúùàáäâìíîï ]*\)){0,1}(:)?(\s)?"
     FIND_MISTER_OR_MADAM = r"(^GOSPOD\s?_{4,50}|^GOSPA\s?_{4,50})(:)?"
+    FIND_MINISTER = r"(^(Nadaljevanje |nadaljevanje )?[A-ZČŠŽĆÖĐÒÓÔÖÜÛÚÙÀÁÄÂÌÍÎÏ.]{3,25}\s*(?:[(a-zčšžćöđòóôöüûúùàáäâìíîï,)])*? [A-ZČŠŽĆÖĐÒÓÔÖÜÛÚÙÀÁÄÂÌÍÎÏ., ]{3,25}){1}(\([A-ZČŠŽĆÖĐÒÓÔÖÜÛÚÙÀÁÄÂÌÍÎÏa-zčšžćöđòóôöüûúùàáäâìíî,ï ]*\)){0,1}(:)?(\s)?"
     FIND_TRAK = r"^([\dOab\.]{1,4}\s*.|[\dOab]{1,4}\s*.\s*(in|-)??\s*[\dOab]{1,4}\s*.)?\s*TRAK\b"
     FIND_SESSION_PAUSE = r"\(Seja .{6,10}(prekinjena|nadaljevala) .{6,10}\)"
     FIND_END_OF_SESSION = (
@@ -50,13 +51,14 @@ class SpeechParser(object):
     current_person = None
     date_of_sitting = None
 
-    def __init__(self, storage, urls, session, start_date):
+    def __init__(self, storage, urls, session, start_date, debug=False):
         self.urls = urls
         self.storage = storage
         self.session = session
         self.start_date = start_date
         self.session_start_time = None
         self.pages = []
+        self.DEBUG = debug
 
     def parse(self, parse_new_speeches=False):
         start_order = 0
@@ -138,19 +140,22 @@ class SpeechParser(object):
         )
         lines = re.split(self.BR_TAG, output_text_string, 0, re.MULTILINE)
         lines = list(map(str.strip, lines))
+        if self.DEBUG:
+            lines = lines[:150]
 
         self.state = ParserState.META
         self.current_person = None
         self.current_text = []
+
         for line in lines:
             line_tree = html.fromstring(f"<span>{line}</span>")
 
             if self.DEBUG:
                 print("---")
+                print(self.state)
                 print(line)
                 print(line_tree)
                 print(line_tree.text_content())
-                print()
 
             if self.find_trak(line_tree):
                 continue
@@ -233,9 +238,15 @@ class SpeechParser(object):
         """
         try to find person name in line if not found parse line as text
         """
+        line = line_tree.text_content()
+        if not line.strip():
+            self.state = ParserState.NAME
+            return
         name_candidate = line_tree.cssselect("b")
         speaker = None
         if name_candidate:
+            if self.DEBUG:
+                print(f"Found bolded text: {name_candidate[0].text.strip()}")
             # check if bolded text is valid person name
             try:
                 name_candidate = name_candidate[0].text.strip()
@@ -243,9 +254,11 @@ class SpeechParser(object):
                 mister_or_madam_line = re.findall(
                     self.FIND_MISTER_OR_MADAM, name_candidate
                 )
+                minister_line = re.findall(self.FIND_MINISTER, name_candidate)
             except Exception as e:
                 person_line = []
                 mister_or_madam_line = []
+                minister_line = []
                 print('fail find person with "name"', str(person_line))
                 sentry_sdk.capture_message(
                     f"Find person regex fails with error {e}. Name candidate is: {name_candidate}"
@@ -254,8 +267,12 @@ class SpeechParser(object):
                 speaker = person_line[0][0]
             elif len(mister_or_madam_line) == 1:
                 speaker = mister_or_madam_line[0][0]
+            elif len(minister_line) == 1 and self.is_valid_name(minister_line[0][0]):
+                speaker = minister_line[0][0]
 
             if speaker:
+                if self.DEBUG:
+                    print(f"Found speaker: {speaker}")
                 if self.current_person and self.current_text:
                     self.page_content.append(
                         {
@@ -529,4 +546,4 @@ class SpeechParser(object):
 
 
 if __name__ == "__main__":
-    speech_parser = SpeechParser(None, [TEST_TRANSCRIPT_URL], None, None)
+    speech_parser = SpeechParser(None, [TEST_TRANSCRIPT_URL], None, None, debug=True)
