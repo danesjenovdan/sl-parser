@@ -151,7 +151,10 @@ class SessionParser(object):
                     print("session without title")
                     continue
                 session_needs_editing = (
-                    True if "(skupna seja)" in session_name_from_page else False
+                    True
+                    if session_name_from_page
+                    and "(skupna seja)" in session_name_from_page
+                    else False
                 )
 
                 try:
