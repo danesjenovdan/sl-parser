@@ -42,6 +42,8 @@ class SpeechParser(object):
 
     DATE_REGEX = r"\d{1,2}\.\s*\d{1,2}\.\s*\d{4}"
 
+    START_DATE_REGEX = r"\((\d{1,2}\.\s*(januar|februar|marec|april|maj|junij|julij|avgust|september|oktober|november|december)\s+\d{4})\)"
+
     DEBUG = False
 
     # data
@@ -57,21 +59,105 @@ class SpeechParser(object):
         self.session = session
         self.start_date = start_date
         self.session_start_time = None
+        self.page_htmls = []
         self.pages = []
+        self.titles = []
+        self.page_in_review = []
         self.DEBUG = debug
+        self.read_files()
+        self.in_review_controller()
 
-    def parse(self, parse_new_speeches=False):
+    def read_files(self):
+        for url in self.urls:
+            print(f"Opening speeches from url: {url}")
+            speeches_content = requests.get(url=url).text
+            htree = html.fromstring(speeches_content)
+            self.page_htmls.append({"url": url, "tree": htree})
+            title = self.parse_title(htree)
+            self.titles.append(title)
+            if "v pregled" in title.lower():
+                self.page_in_review.append(True)
+            else:
+                self.page_in_review.append(False)
+
+    def in_review_controller(self):
+        self.parse_all_speeches = False
+        self.parse_new_speeches = False
+        was_session_in_review = self.storage.session_storage.is_session_in_review(
+            self.session
+        )
+        session_in_review = any(self.page_in_review)
+        if not session_in_review and was_session_in_review:
+            # set session to not in review
+            self.session.patch_session({"in_review": False})
+            # unvalidate speeches
+            self.session.unvalidate_speeches()
+
+            # TODO parse new speeches
+            self.parse_all_speeches = True
+        elif session_in_review and not was_session_in_review:
+            # set session to not in review
+            self.parse_new_speeches = True
+
+        elif session_in_review and was_session_in_review:
+            self.parse_new_speeches = True
+        elif self.session.is_new:
+            self.parse_all_speeches = True
+
+    def update_session_start_time(self, time):
+        """set session start time if not set yet"""
+        if not self.session.start_time:
+            start_date = None
+            if self.page_htmls:
+                htree = self.page_htmls[0]["tree"]
+                # gat date of sitting: '6. 10. 2025'
+                maybe_date_element = htree.cssselect("table td")
+                if maybe_date_element:
+                    start_date = maybe_date_element[-1].text
+                else:
+                    maybe_date_element = htree.cssselect("form>div>div")
+                    if maybe_date_element:
+                        maybe_date = " ".join(
+                            [self.tostring_unwraped(i) for i in maybe_date_element]
+                        )
+                        dates = re.findall(self.DATE_REGEX, maybe_date)
+                        if dates:
+                            start_date = dates[0]
+
+            if start_date:
+                new_start = datetime.strptime(start_date, "%d. %m. %Y")
+            else:
+                new_start = self.get_start_sitting_from_meta()
+            if new_start:
+                self.session.update_start_time(new_start)
+
+        start_time = datetime.strptime(
+            self.session.start_time, "%Y-%m-%dT%H:%M:%S"
+        )  # from isoformat
+        # check if start_time is set in the middle of the night
+        if self.is_midnight(start_time):
+            try:
+                hour, minute = time.split(":")
+                start_time = start_time.replace(hour=int(hour), minute=int(minute))
+                self.session.update_start_time(start_time)
+            except Exception as e:
+                print(e)
+                pass
+
+    def parse(self):
+        if not (self.parse_all_speeches or self.parse_new_speeches):
+            print("No need to parse speeches")
+            return
         start_order = 0
-        for idx, url in enumerate(self.urls):
+        for idx, page in enumerate(self.page_htmls):
+            print(f"Parsing speeches from url: {page['url']}")
+            htree = page["tree"]
             self.page_idx = idx
-            print(f"Parsing speeches from url: {url}")
             self.page_content = []
             self.meta = []
             self.current_text = []
             self.current_person = None
             self.date_of_sitting = None
-            speeches_content = requests.get(url=url).text
-            htree = html.fromstring(speeches_content)
 
             err_mgs = htree.cssselect("form span.wcmLotusMessage")
 
@@ -93,9 +179,16 @@ class SpeechParser(object):
                     if dates:
                         self.date_of_sitting = dates[0]
 
+            title = self.parse_title(htree)
+            self.titles.append(title)
+            if "v pregled" in title.lower():
+                self.page_in_review.append(True)
+            else:
+                self.page_in_review.append(False)
+
             self.parse_content(htree)
 
-            if parse_new_speeches:
+            if self.parse_new_speeches:
                 last_added_index = self.session.get_speech_count()
                 print(f"Session has {last_added_index} speeches")
             else:
@@ -116,11 +209,47 @@ class SpeechParser(object):
     def get_content(self):
         return self.page_content
 
+    def is_in_review(self):
+        return any(self.page_in_review)
+
     def get_meta_data(self):
         return self.meta
 
     def get_sitting_date(self):
         return self.date_of_sitting
+
+    def parse_title(self, htree):
+        title = ""
+        try:
+            title = htree.cssselect("form>h1")[0].text
+        except:
+            pass
+        return title
+
+    def get_start_sitting_from_meta(self):
+        months = [
+            "januar",
+            "februar",
+            "marec",
+            "april",
+            "maj",
+            "junij",
+            "julij",
+            "avgust",
+            "september",
+            "oktober",
+            "november",
+            "december",
+        ]
+        date_search = re.search(self.START_DATE_REGEX, " ".join(self.meta))
+        if date_search:
+            try:
+                date_string = date_search.groups()[0]
+                day, month, year = date_string.strip().split(" ")
+                return datetime(int(day.strip(".")), months.index(month) + 1, int(year))
+            except Exception as e:
+                print("get_start_sitting_from_meta", e)
+        return None
 
     # main loop
     def parse_content(self, htree):
@@ -175,20 +304,7 @@ class SpeechParser(object):
                         time = self.get_time_from_line(line)
                         print(time)
                         if time:
-                            try:
-                                hour, minute = time.split(":")
-                                self.start_time = self.start_date.replace(
-                                    hour=int(hour), minute=int(minute)
-                                )
-                                if (
-                                    self.session.start_time
-                                    != self.start_time.isoformat()
-                                ):
-                                    # print(fix)
-                                    self.session.update_start_time(self.start_time)
-                            except Exception as e:
-                                print(e)
-                                pass
+                            self.update_session_start_time(time)
 
             elif self.state == ParserState.NAME:
                 self.parse_person_line(line_tree)
@@ -499,14 +615,18 @@ class SpeechParser(object):
                 return None
 
         speech_objs = []
+        skipped_speeches = 0
         for order, speech in enumerate(self.page_content):
             the_order = start_order + order + 1
             person = self.storage.people_storage.get_or_add_object(
                 {"name": speech["person"].strip()}
             )
+
             # skip adding speech if has lover and equal order than last_added_index [for sessions in review]
             if last_added_index and the_order <= last_added_index:
-                print("This speech is already parsed")
+                if self.DEBUG:
+                    print("This speech is already parsed")
+                skipped_speeches += 1
                 continue
 
             if not speech["content"]:
@@ -531,6 +651,8 @@ class SpeechParser(object):
                 }
             )
         self.session.add_speeches(speech_objs)
+        print(f"Added speeches: {len(speech_objs)}")
+        print(f"Skipped speeches: {skipped_speeches}")
         return the_order
 
     def get_time_from_match(self, match):
@@ -543,6 +665,9 @@ class SpeechParser(object):
         match = re.search(self.START_AT_REGEX, line, re.IGNORECASE)
         if match:
             return self.get_time_from_match(match)
+
+    def is_midnight(self, dt):
+        return (dt.hour, dt.minute, dt.second, dt.microsecond) == (0, 0, 0, 0)
 
 
 if __name__ == "__main__":

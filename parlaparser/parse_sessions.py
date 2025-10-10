@@ -74,15 +74,18 @@ class SessionParser(object):
                 "url": "https://fotogalerija.dz-rs.si/datoteke/opendata/SDZ.XML",
                 "root_key": "SDZ",
                 "file_name": "SDZ.XML",
-                "dz_url": "https://www.dz-rs.si/wps/portal/Home/seje/izbranaSeja",
+                "sklc_type": "sej",
+                "dz_url": "https://www.dz-rs.si/wps/portal/Home/seje/evidenca",
             },
             {
                 "url": "https://fotogalerija.dz-rs.si/datoteke/opendata/SDT.XML",
                 "root_key": "SDT",
                 "file_name": "SDT.XML",
-                "dz_url": "https://www.dz-rs.si/wps/portal/Home/seje/izbranaSejaDt",
+                "sklc_type": "dt",
+                "dz_url": "https://www.dz-rs.si/wps/portal/Home/seje/evidenca",
             },
         ]
+
         for url_group in session_url_groups:
             response = requests.get(url_group["url"])
             with open(f'/tmp/{url_group["file_name"]}', "wb") as f:
@@ -126,30 +129,30 @@ class SessionParser(object):
 
                 uid = session["KARTICA_SEJE"]["UNID"].split("|")[1]
 
-                session_url = f'{url_group["dz_url"]}/?mandat={self.storage.MANDATE_GOV_ID}&seja= {session_name}.%20{session_type_xml}&uid={uid}'
+                session_documents = session.get("PODDOKUMENTI", [])
+                document_unids = get_values(session_documents)
 
-                print(f"Parsing session with url {session_url}")
-
-                # get session page
-                request_session = requests.Session()
-
-                retry = Retry(connect=3, backoff_factor=2)
-                adapter = HTTPAdapter(max_retries=retry)
-                request_session.mount("http://", adapter)
-                request_session.mount("https://", adapter)
-
-                session_page = request_session.get(url=session_url).content
-                session_htree = html.fromstring(session_page)
-
-                session_in_review = True
-
-                # check if is "skupna seja"
-                title = session_htree.cssselect("form div h2")
-                if title:
-                    session_name_from_page = title[0].text
-                else:
-                    print("session without title")
+                sklic_seje_unid = None
+                for doc_unid in document_unids:
+                    if doc_unid in self.document_keys:
+                        document = self.documents[doc_unid]
+                        if document["title"] and document["title"] == "Sklic seje":
+                            sklic_seje_unid = doc_unid.split("|")[1]
+                            break
+                if not sklic_seje_unid:
+                    print("Session has no sklic seje")
                     continue
+
+                session_url = f'{url_group["dz_url"]}?mandat={self.storage.MANDATE_GOV_ID}&type={url_group["sklc_type"]}&uid={sklic_seje_unid}'
+
+                sklic_url = session_url
+                print("---> sklic_url:", sklic_url)
+                sklic_content = requests.get(sklic_url).content
+                sklic_htree = html.fromstring(sklic_content)
+                print(session["KARTICA_SEJE"])
+
+                body_session_name = self.find_session_name_from_table(sklic_htree)
+                body_name, session_name_from_page = body_session_name.split("/")
                 session_needs_editing = (
                     True
                     if session_name_from_page
@@ -157,65 +160,18 @@ class SessionParser(object):
                     else False
                 )
 
-                try:
-                    # if there is any speech at the session
-                    first_speech_date = (
-                        session_htree.cssselect(
-                            "form>div>table>tbody>tr>td>div>table a"
-                        )[0]
-                        .text.replace(" ", "")
-                        .split("Z")[0]
-                        .strip()
-                    )
-                    start_time = datetime.strptime(first_speech_date, "%d.%m.%Y")
-                    session_in_review = False
-
-                    # check if session has any speech document in review
-                    for speech_link in session_htree.cssselect(
-                        "form>div>table>tbody>tr>td>div>table a"
-                    ):
-                        if "(v pregledu)" in speech_link.text:
-                            session_in_review = True
-                except:
+                sklic_start_time = self.find_date_form_table(sklic_htree)
+                if sklic_start_time and not start_time:
+                    # if session has not speeches try to find start time from sklic
+                    start_time = sklic_start_time
+                elif start_time:
+                    # if session has speeches then use date of 1st speech
                     pass
-
-                try:
-                    # try find date from "Sklic seje" for session start time
-                    documents_on_page = session_htree.cssselect(
-                        "form>div>table>tbody>tr a"
-                    )
-                    if documents_on_page and documents_on_page[0].text == "Sklic seje":
-                        sklic_url = session_htree.cssselect(
-                            "form>div>table>tbody>tr a"
-                        )[0].values()[1]
-                        sklic_content = requests.get(
-                            f"https://www.dz-rs.si{sklic_url}"
-                        ).content
-                        sklic_htree = html.fromstring(sklic_content)
-
-                        sklic_start_time = self.find_date_form_table(sklic_htree)
-                        if sklic_start_time and not start_time:
-                            # if session has not speeches try to find start time from sklic
-                            start_time = sklic_start_time
-                        elif start_time:
-                            # if session has speeches then use date of 1st speech
-                            pass
-                        else:
-                            # TODO sentry call or something. That is wierd case in sklic without date.
-                            session_needs_editing = True
-
-                    # skip parsing session with start time in future
-                    if start_time > datetime.now():
-                        continue
-
-                except Exception as e:
-                    print("----ERROR.....:   cannot find date", e)
-                    continue
+                else:
+                    # TODO sentry call or something. That is wierd case in sklic without date.
+                    session_needs_editing = True
 
                 print(session)
-
-                session_documents = session.get("PODDOKUMENTI", [])
-                document_unids = get_values(session_documents)
 
                 speech_pages = session.get("DOBESEDNI_ZAPISI_SEJE", [])
                 speech_unids = get_values(speech_pages)
@@ -224,8 +180,8 @@ class SessionParser(object):
                     organization = self.storage.organization_storage.get_or_add_object(
                         {
                             "name": organization_name
-                            + " "
-                            + self.storage.MANDATE_GOV_ID,
+                            # + " "
+                            # + self.storage.MANDATE_GOV_ID,
                         }
                     )
                     organization_id = organization.id
@@ -240,56 +196,29 @@ class SessionParser(object):
                     session_gov_id = f"{self.storage.MANDATE_GOV_ID} Državni zbor - {full_session_name}. {session_type_xml}"
 
                 # get or add session
-                current_session = self.storage.session_storage.get_or_add_object(
-                    {
-                        "name": f"{session_name}. {session_type_xml.lower()} seja",
-                        "organization": organization_id,
-                        "organizations": [organization_id],
-                        "classification": self.get_session_type(session_type_xml),
-                        "start_time": start_time.isoformat(),
-                        "in_review": session_in_review,
-                        "needs_editing": session_needs_editing,
-                        "gov_id": session_gov_id,
-                        "mandate_id": self.storage.mandate_id,
-                    }
-                )
+                data = {
+                    "name": f"{session_name}. {session_type_xml.lower()} seja",
+                    "organization": organization_id,
+                    "organizations": [organization_id],
+                    "classification": self.get_session_type(session_type_xml),
+                    "in_review": True,
+                    "needs_editing": session_needs_editing,
+                    "gov_id": session_gov_id,
+                    "mandate_id": self.storage.mandate_id,
+                }
+
+                # workaround for sessions without date on sklic (DZ sessions)
+                if start_time:
+                    data["start_time"] = start_time.isoformat()
+                current_session = self.storage.session_storage.get_or_add_object(data)
                 session_id = current_session.id
-                # if current_session.start_time != start_time.isoformat():
-                #    # patch session start_time if is changed on dz page
-                #    self.storage.session_storage.patch_session(current_session, {'start_time': start_time.isoformat()})
+                if (not current_session.start_time) and start_time:
+                    # patch session start_time if is changed on dz page
+                    current_session.update_start_time(start_time)
 
                 print(
                     f"Getted session: {session_name}. {session_type_xml.lower()} seja has id {session_id}"
                 )
-
-                parse_all_speeches = False
-                parse_new_speeches = False
-
-                was_session_in_review = (
-                    self.storage.session_storage.is_session_in_review(current_session)
-                )
-
-                # session is reviewed, reload speeches
-                if not session_in_review and was_session_in_review:
-                    # set session to not in review
-                    current_session.patch_session({"in_review": False})
-
-                    if parse_speeches:
-                        # unvalidate speeches
-                        current_session.unvalidate_speeches()
-
-                    # TODO parse new speeches
-                    parse_all_speeches = True
-
-                elif session_in_review and not was_session_in_review:
-                    # set session to not in review
-                    current_session.patch_session({"in_review": True})
-                    parse_new_speeches = True
-
-                elif session_in_review and was_session_in_review:
-                    parse_new_speeches = True
-                elif current_session.is_new:
-                    parse_all_speeches = True
 
                 if current_session.is_new and document_unids:
                     for doc_unid in document_unids:
@@ -304,23 +233,9 @@ class SessionParser(object):
                                 }
                                 self.storage.parladata_api.links.set(link_data)
 
-                # parsing VOTES
-                # TODO check, the condition may stink
-                print(
-                    f"parse votes {parse_votes} {was_session_in_review} {current_session.is_new}"
-                )
-                if parse_votes and (was_session_in_review or current_session.is_new):
-                    vote_parser = VotesParser(self.storage, current_session)
-                    vote_parser.parse_votes(request_session, session_htree)
-
                 # parsing SPEECHES
-                print(
-                    "parse speeches?: ",
-                    parse_speeches,
-                    parse_all_speeches,
-                    parse_new_speeches,
-                )
-                if parse_speeches and (parse_all_speeches or parse_new_speeches):
+                print("parse speeches?: ", parse_speeches)
+                if parse_speeches:
                     start_order = 0
                     speech_urls = []
                     for orginal_speech_unid in speech_unids:
@@ -335,43 +250,50 @@ class SessionParser(object):
                     speech_parser = SpeechParser(
                         self.storage, speech_urls, current_session, start_time
                     )
-                    speech_parser.parse(parse_new_speeches)
+                    speech_parser.parse()
 
     def get_session_type(self, type_text):
         type_text = type_text.lower().strip()
         return SESSION_TYPES.get(type_text.lower(), "unknown")
 
-    def find_date_form_table(self, sklic_tree):
-        date_str = None
-        time_str = None
-        for tr in sklic_tree.cssselect("form>table>tbody>tr"):
+    def find_session_name_from_table(self, sklic_tree):
+        for tr in sklic_tree.cssselect("table.table-custom>tr"):
             td = tr.cssselect("td")
             try:
-                if td[0].cssselect("b")[0].text == "Datum":
+                if td[0].text == "Polni naziv telesa / št. in vrsta seje":
                     span = td[1].cssselect("span")
                     if span:
-                        date_str = span[0].text
+                        return span[0].text
                     else:
-                        date_str = td[1].text
-                if td[0].cssselect("b")[0].text == "Ura":
+                        return td[1].text
+            except Exception as e:
+                print(e)
+        return None
+
+    def find_date_form_table(self, sklic_tree):
+        datetime_str = None
+        for tr in sklic_tree.cssselect("table.table-custom>tr"):
+            td = tr.cssselect("td")
+            try:
+                if td[0].text == "Datum in ura":
                     span = td[1].cssselect("span")
                     if span:
-                        time_str = span[0].text
+                        datetime_str = span[0].text
                     else:
-                        time_str = td[1].text
-                    if not re.search("^\d\d:\d\d$", time_str):
-                        time_str = None
+                        datetime_str = td[1].text
             except Exception as e:
                 print(e)
 
-        if date_str:
-            # replace brackets
-            date_str = date_str.replace("(", "").replace(")", "")
-            if time_str:
-                return datetime.strptime(f"{date_str} {time_str}", "%d. %m. %Y %H:%M")
-            # TODO send page date falure
-            return datetime.strptime(date_str, "%d. %m. %Y")
-        # TODO send page date falure
+        if datetime_str:
+            # date is: 22. 1. 2025 15:30
+            if re.match(r"\d{1,2}\. \d{1,2}\. \d{4} \d{1,2}:\d{2}", datetime_str):
+                return datetime.strptime(datetime_str, "%d. %m. %Y %H:%M")
+            else:
+                # find just date form string like: 20. 6. 2025 15 minut po končani 32. seji Državnega zbora
+                date_match = re.search(r"\d{1,2}\. \d{1,2}\. \d{4}", datetime_str)
+                if date_match:
+                    date_str = date_match.group(0)
+                    return datetime.strptime(date_str, "%d. %m. %Y")
         return None
 
 
