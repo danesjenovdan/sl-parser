@@ -46,6 +46,7 @@ try:
     parse_sifrant = MembershipsParser(storage)
     parse_sifrant.parse()
 except Exception as e:
+    print(e)
     sentry_sdk.capture_exception(e)
 
 # session votes / speeches
@@ -53,6 +54,7 @@ try:
     session_parser = SessionParser(storage)
     session_parser.parse(parse_speeches=True, parse_votes=False)
 except Exception as e:
+    print(e)
     sentry_sdk.capture_exception(e)
 
 
@@ -60,6 +62,7 @@ try:
     session_parser = VotesParser(storage)
     session_parser.parse()
 except Exception as e:
+    print(e)
     sentry_sdk.capture_exception(e)
 
 # use this for parse specific session
@@ -70,6 +73,7 @@ try:
     question_parser = QuestionParser(storage)
     question_parser.parse()
 except Exception as e:
+    print(e)
     sentry_sdk.capture_exception(e)
 
 # Reload data storage for new session key for legislation
