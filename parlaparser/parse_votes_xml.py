@@ -17,12 +17,12 @@ ROMAN_NUMERALS_MAP = {
 
 
 class VotesParser(object):
-    def __init__(self, storage):
+    def __init__(self, storage, debug=False):
         self.storage = storage
+        self.debug = debug
 
-    def parse(self):
+    def parse(self, find_unid=None):
         votes_url_groups = [
-            # TODO uncoment for parsing DZ sessions
             {
                 "url": "https://fotogalerija.dz-rs.si/datoteke/opendata/GDZ.XML",
                 "file_name": "GDZ.XML",
@@ -50,7 +50,10 @@ class VotesParser(object):
                 naslov_akta = vote_xml["NASLOV_AKTA"]
                 vote_zveza = vote_xml["ZVEZA"]
                 xml_mandate = vote_xml["MANDAT"]
+                vote_unid = vote_xml["UNID"]
                 seja = vote_xml["SEJA"]
+                if find_unid and vote_unid != find_unid:
+                    continue
                 if url_group["type"] == "DZ":
                     session_name_org = seja["ID"].strip()
                     session_name = session_name_org.strip("0")
@@ -78,19 +81,23 @@ class VotesParser(object):
                             org_gov_id
                         )
                     )
+                    if not organization:
+                        print(f" Organizationnot found: {org_gov_id}")
+                        print(vote_xml)
 
                     session_gov_id = f"{self.storage.MANDATE_GOV_ID} {org_gov_id_short} - {org_name.strip()} - {session_gov_id_short}"
 
-                session = self.storage.session_storage.get_or_add_object(
-                    {
-                        "name": session_name,
-                        "gov_id": session_gov_id,
-                        "organization": organization.id,
-                        "timestamp": timestamp,
-                        "classification": SESSION_TYPE.get(seja["VRSTA"], "unknown"),
-                        "organizations": [organization.id],
-                    }
-                )
+                session_data = {
+                    "name": session_name,
+                    "gov_id": session_gov_id,
+                    "organization": organization.id,
+                    "timestamp": timestamp,
+                    "classification": SESSION_TYPE.get(seja["VRSTA"], "unknown"),
+                    "organizations": [organization.id],
+                }
+                if self.debug:
+                    print(session_data)
+                session = self.storage.session_storage.get_or_add_object(session_data)
 
                 if xml_mandate and xml_mandate.isdigit():
                     xml_mandate = ROMAN_NUMERALS_MAP.get(xml_mandate)
@@ -145,7 +152,8 @@ class VotesParser(object):
         }
         if legislation_id:
             motion["law"] = legislation_id
-
+        if self.debug:
+            print(motion)
         motion_obj = session.vote_storage.get_or_add_object(motion)
 
         vote_id = int(motion_obj.vote.id)
