@@ -103,6 +103,10 @@ class SpeechParser(object):
             self.parse_new_speeches = True
         elif self.session.is_new:
             self.parse_all_speeches = True
+        else:
+            speech_count = self.session.get_speech_count()
+            if speech_count == 0:
+                self.parse_all_speeches = True
 
     def update_session_start_time(self, time):
         """set session start time if not set yet"""
