@@ -72,9 +72,10 @@ class VotesParser(object):
                     session_name = (
                         f'{session_gov_id_short.lower().strip("0").strip()} seja'
                     )
-                    dt_splited = seja["DELOVNO_TELO"].split("-")
-                    org_gov_id_short = dt_splited[0].strip()
-                    org_name = "-".join(dt_splited[1:]).strip()
+                    org_gov_id_short = session_full_name.split(" ")[0]
+                    # dt_splited = seja["DELOVNO_TELO"].split("-")
+                    # org_gov_id_short = dt_splited[0].strip()
+                    # org_name = "-".join(dt_splited[1:]).strip()
                     org_gov_id = f"DT{org_gov_id_short.strip().zfill(3)}"
                     organization = (
                         self.storage.organization_storage.get_organization_by_gov_id(
@@ -85,7 +86,7 @@ class VotesParser(object):
                         print(f" Organizationnot found: {org_gov_id}")
                         print(vote_xml)
 
-                    session_gov_id = f"{self.storage.MANDATE_GOV_ID} {org_gov_id_short} - {org_name.strip()} - {session_gov_id_short}"
+                    session_gov_id = f"{self.storage.MANDATE_GOV_ID} {org_gov_id_short} - {organization.name.strip()} - {session_gov_id_short}"
 
                 session_data = {
                     "name": session_name,
