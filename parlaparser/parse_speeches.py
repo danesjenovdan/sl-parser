@@ -89,7 +89,8 @@ class SpeechParser(object):
         session_in_review = any(self.page_in_review)
         if not session_in_review and was_session_in_review:
             # set session to not in review
-            self.session.patch_session({"in_review": False})
+            if self.session.in_review:
+                self.session.patch_session({"in_review": False})
             # unvalidate speeches
             self.session.unvalidate_speeches()
 
@@ -106,6 +107,8 @@ class SpeechParser(object):
         else:
             speech_count = self.session.get_speech_count()
             if speech_count == 0:
+                if not self.session.in_review:
+                    self.session.patch_session({"in_review": True})
                 self.parse_all_speeches = True
 
     def update_session_start_time(self, time):
@@ -133,6 +136,7 @@ class SpeechParser(object):
             else:
                 new_start = self.get_start_sitting_from_meta()
             if new_start:
+                print("SET SESSION START TIME", new_start, time)
                 self.session.update_start_time(new_start)
 
         start_time = datetime.strptime(
@@ -143,6 +147,7 @@ class SpeechParser(object):
             try:
                 hour, minute = time.split(":")
                 start_time = start_time.replace(hour=int(hour), minute=int(minute))
+                print("SET SESSION START TIME MIDNIGHT", new_start, time)
                 self.session.update_start_time(start_time)
             except Exception as e:
                 print(e)
