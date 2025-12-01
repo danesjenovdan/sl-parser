@@ -193,7 +193,7 @@ class SessionParser(object):
                 else:
                     organization_id = self.storage.main_org_id
                     org_gov_id = None
-                    session_gov_id = f"{self.storage.MANDATE_GOV_ID} Državni zbor - {full_session_name}. {session_type_xml}"
+                    session_gov_id = f"{self.storage.MANDATE_GOV_ID} Državni zbor - {session_name.zfill(2)}. {session_type_xml}"
 
                 # get or add session
                 data = {
