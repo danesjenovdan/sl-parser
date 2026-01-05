@@ -57,13 +57,14 @@ class VotesParser(object):
                 if url_group["type"] == "DZ":
                     session_name_org = seja["ID"].strip()
                     session_name = session_name_org.strip("0")
+                    session_name_striped = session_name
                     session_name = f"{session_name.lower()} seja"
                     organization = (
                         self.storage.organization_storage.get_organization_by_id(
                             int(self.storage.main_org_id)
                         )
                     )
-                    session_gov_id = f"{self.storage.MANDATE_GOV_ID} Državni zbor - {session_name_org}"
+                    session_gov_id = f"{self.storage.MANDATE_GOV_ID} Državni zbor - {session_name_striped}"
                 else:
                     if not "DELOVNO_TELO" in seja.keys():
                         continue

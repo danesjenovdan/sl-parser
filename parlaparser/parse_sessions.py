@@ -187,13 +187,12 @@ class SessionParser(object):
                     organization_id = organization.id
                     org_gov_id = organization.gov_id
                     org_gov_id_short = org_gov_id[2:]
-                    if org_gov_id_short[0] == "0":
-                        org_gov_id_short = org_gov_id_short[1:]
+                    org_gov_id_short = org_gov_id_short.lstrip("0")
                     session_gov_id = f"{self.storage.MANDATE_GOV_ID} {org_gov_id_short} - {organization_name.strip()} - {full_session_name}. {session_type_xml}"
                 else:
                     organization_id = self.storage.main_org_id
                     org_gov_id = None
-                    session_gov_id = f"{self.storage.MANDATE_GOV_ID} Državni zbor - {session_name.zfill(2)}. {session_type_xml}"
+                    session_gov_id = f"{self.storage.MANDATE_GOV_ID} Državni zbor - {session_name}. {session_type_xml}"
 
                 # get or add session
                 data = {
