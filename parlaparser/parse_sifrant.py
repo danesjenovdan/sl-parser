@@ -34,7 +34,12 @@ class MembershipsParser(object):
     def parse(self):
         self.parse_document()
         self.prepare_data_structure()
-        self.membership_storage.refresh_per_person_memberships()
+        main_org = self.storage.organization_storage.get_organization_by_id(
+            self.storage.main_org_id
+        )
+        self.membership_storage.refresh_per_person_memberships(
+            self.per_person_data, main_org
+        )
 
     def parse_document(self):
 
@@ -196,7 +201,7 @@ class MembershipsParser(object):
                 if connection["SUBJEKTI_FUNKCIJA_SIFRA"] in ps_keys:
                     typ = "party"
                 elif connection["SUBJEKTI_FUNKCIJA_SIFRA"] in org_keys:
-                    typ = "commitee"
+                    typ = "committee"
                 else:
                     continue
 
@@ -275,13 +280,11 @@ class MembershipsParser(object):
                     or "Nepovezana poslanka" in party["organization"].name
                 ):
                     party["organization"] = None
-                party["on_behalf_of"] = party["organization"]
-                party["organization"] = main_org
+            #     party["on_behalf_of"] = party["organization"]
+            #     party["organization"] = main_org
 
-            for membership in person_memberships.get("commitee", []):
-                membership["on_behalf_of"] = party["organization"]
-
-        self.membership_storage.temporary_data = self.per_person_data
+            # for membership in person_memberships.get("committee", []):
+            #     membership["on_behalf_of"] = party["organization"]
 
     def get_root_or_text(self, data, element="#text"):
         if isinstance(data, str):
