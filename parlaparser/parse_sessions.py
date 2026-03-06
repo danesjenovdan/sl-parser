@@ -88,10 +88,20 @@ class SessionParser(object):
 
         for url_group in session_url_groups:
             response = requests.get(url_group["url"])
+            if response.status_code != 200:
+                sentry_sdk.capture_message(
+                    f"Failed to download session data from {url_group['url']}"
+                )
+                continue
+
             with open(f'/tmp/{url_group["file_name"]}', "wb") as f:
                 f.write(response.content)
             with open(f'/tmp/{url_group["file_name"]}', "rb") as data_file:
-                data = xmltodict.parse(data_file, dict_constructor=dict)
+                try:
+                    data = xmltodict.parse(data_file, dict_constructor=dict)
+                except Exception as e:
+                    sentry_sdk.capture_exception(e)
+                    continue
 
             # load documents from XML
             self.load_documents(data, url_group["root_key"])
