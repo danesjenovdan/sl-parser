@@ -244,7 +244,7 @@ class SessionParser(object):
 
                 # parsing SPEECHES
                 print("parse speeches?: ", parse_speeches)
-                if parse_speeches:
+                if parse_speeches and speech_unids:
                     start_order = 0
                     speech_urls = []
                     for orginal_speech_unid in speech_unids:
