@@ -24,4 +24,6 @@ echo "update votes to solr"
 python manage.py upload_votes_to_solr
 echo "send notifications"
 python manage.py send_daily_notifications
+echo "run tests"
+python manage.py run_data_validation
 
