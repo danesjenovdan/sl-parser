@@ -3,16 +3,13 @@ import re
 from datetime import datetime
 from enum import Enum
 
-import requests
 import sentry_sdk
 import xmltodict
 from lxml import html
-from requests.adapters import HTTPAdapter
-from requests.packages.urllib3.util.retry import Retry
 
 from parlaparser.parse_speeches import SpeechParser
 from parlaparser.parse_votes import VotesParser
-from parlaparser.utils.methods import get_values
+from parlaparser.utils.methods import get_values, get_with_retry
 
 
 class ParserState(Enum):
@@ -87,7 +84,7 @@ class SessionParser(object):
         ]
 
         for url_group in session_url_groups:
-            response = requests.get(url_group["url"])
+            response = get_with_retry(url_group["url"])
             if response.status_code != 200:
                 sentry_sdk.capture_message(
                     f"Failed to download session data from {url_group['url']}"
@@ -157,7 +154,7 @@ class SessionParser(object):
 
                 sklic_url = session_url
                 print("---> sklic_url:", sklic_url)
-                sklic_content = requests.get(sklic_url).content
+                sklic_content = get_with_retry(sklic_url).content
                 sklic_htree = html.fromstring(sklic_content)
                 print(session["KARTICA_SEJE"])
 
