@@ -2,9 +2,10 @@ import re
 from datetime import datetime
 from enum import Enum
 
-import requests
 import sentry_sdk
 from lxml import etree, html
+
+from parlaparser.utils.methods import get_with_retry
 
 
 class ParserState(Enum):
@@ -70,7 +71,7 @@ class SpeechParser(object):
     def read_files(self):
         for url in self.urls:
             print(f"Opening speeches from url: {url}")
-            speeches_content = requests.get(url=url).text
+            speeches_content = get_with_retry(url).text
             htree = html.fromstring(speeches_content)
             self.page_htmls.append({"url": url, "tree": htree})
             title = self.parse_title(htree)
