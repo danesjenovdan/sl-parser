@@ -87,6 +87,8 @@ class VotesParser(object):
                         print(f" Organizationnot found: {org_gov_id}")
                         print(vote_xml)
 
+                    org_gov_id_short = org_gov_id_short.lstrip("0")
+
                     session_gov_id = f"{self.storage.MANDATE_GOV_ID} {org_gov_id_short} - {organization.name.strip()} - {session_gov_id_short}"
 
                 session_data = {
