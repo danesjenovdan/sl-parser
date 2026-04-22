@@ -7,7 +7,7 @@ import sentry_sdk
 import xmltodict
 from lxml import html
 
-from parlaparser.parse_speeches import SpeechParser
+from parlaparser.parse_speeches_x import SpeechParser
 from parlaparser.parse_votes import VotesParser
 from parlaparser.utils.methods import get_values, get_with_retry
 
@@ -61,12 +61,12 @@ class SessionParser(object):
         self,
         session_number=None,
         session_type=None,
+        session_uid=None,
         parse_speeches=False,
         parse_votes=False,
     ):
 
         session_url_groups = [
-            # TODO uncoment for parsing DZ sessions
             {
                 "url": "https://fotogalerija.dz-rs.si/datoteke/opendata/SDZ.XML",
                 "root_key": "SDZ",
@@ -135,6 +135,9 @@ class SessionParser(object):
                     continue
 
                 uid = session["KARTICA_SEJE"]["UNID"].split("|")[1]
+
+                if session_uid and uid != session_uid:
+                    continue
 
                 session_documents = session.get("PODDOKUMENTI", [])
                 document_unids = get_values(session_documents)
@@ -220,6 +223,11 @@ class SessionParser(object):
                 session_id = current_session.id
                 if (not current_session.start_time) and start_time:
                     # patch session start_time if is changed on dz page
+                    print(
+                        "PATCH SESSION START TIME",
+                        start_time,
+                        current_session.start_time,
+                    )
                     current_session.update_start_time(start_time)
 
                 print(
@@ -266,7 +274,10 @@ class SessionParser(object):
         for tr in sklic_tree.cssselect("table.table-custom>tr"):
             td = tr.cssselect("td")
             try:
-                if td[0].text == "Polni naziv telesa / št. in vrsta seje":
+                if (
+                    td[0].cssselect("span")[0].text
+                    == "Polni naziv telesa / št. in vrsta seje"
+                ):
                     span = td[1].cssselect("span")
                     if span:
                         return span[0].text
@@ -281,7 +292,7 @@ class SessionParser(object):
         for tr in sklic_tree.cssselect("table.table-custom>tr"):
             td = tr.cssselect("td")
             try:
-                if td[0].text == "Datum in ura":
+                if td[0].cssselect("span")[0].text == "Datum in ura":
                     span = td[1].cssselect("span")
                     if span:
                         datetime_str = span[0].text

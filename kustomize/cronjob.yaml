@@ -18,11 +18,11 @@ spec:
               - name: DJANGO_SETTINGS_MODULE
                 value: parladata_project.settings.k8s
               - name: PARSER_MANDATE_START_DATE
-                value: '2018-06-22'
+                value: '2026-04-10'
               - name: PARSER_MAIN_ORG_ID
-                value: '137'
+                value: '590'
               - name: PARSER_MANDATE_ID
-                value: '2'
+                value: '4'
               - name: INSTALATION_NAME
                 value: Slovenija
               - name: PARSER_INTERVAL_HOURS
