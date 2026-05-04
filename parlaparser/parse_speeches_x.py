@@ -25,13 +25,13 @@ class SpeechParser(object):
     ANY_SPACES_BETWEEN_B_TAGS = r"</b>(\s*)<b>"
     ANY_EMPTY_B_TAGS = r"<b>(\s*)</b>"
     BR_TAG = r"<br\s*/?>"
-    REGEX_IS_START_OF_CONTENT = r"seja .{5,14} (ob)?\s?\d{1,2}"
+    REGEX_IS_START_OF_CONTENT = r"[Ss]eja .{5,14} (ob)?\s?\d{1,2}"
     REGEX_START_WIERD_WB_SESSION = r"Odprti .{3} seje se je začel ob \d\d"
     DATE_TIME_REGEX = (
         r"\d{1,2}\.\d{1,2}\.\d{4} \d{2}:\d{2}:\d{2}"  # 20.04.2026 09:00:00
     )
     FIND_PERSON = r"(^(Nadaljevanje |nadaljevanje )?[A-ZČŠŽĆÖĐÒÓÔÖÜÛÚÙÀÁÄÂÌÍÎÏ.]{3,25}\s*(?:[(A-ZČŠŽĆÖĐÒÓÔÖÜÛÚÙÀÁÄÂÌÍÎÏ)])*? [A-ZČŠŽĆÖĐÒÓÔÖÜÛÚÙÀÁÄÂÌÍÎÏ. ]{3,25}){1}(\([A-ZČŠŽĆÖĐÒÓÔÖÜÛÚÙÀÁÄÂÌÍÎÏa-zčšžćöđòóôöüûúùàáäâìíîï ]*\)){0,1}(:)?(\s)?"
-    FIND_NAME = r"^(?:(?:Nadaljevanje |nadaljevanje )?(?:Predsednik|Predsednica|Predsedujoči|Predsedujoča)\s+)?(?:(?:Mag|Dr|Prof|mag|dr|prof)\.\s+)?(?P<ime>[A-ZČŠŽĆ][a-zčšžćđòóôöüûúùàáäâìíîï]+(?:\s+[A-ZČŠŽĆ][a-zčšžćđòóôöüûúùàáäâìíîï]+)+)(?:\s*\([^)]*\))?:"
+    FIND_NAME = r"^(?:(?:Nadaljevanje |nadaljevanje )?(?:Predsednik|Predsednica|Predsedujoči|Predsedujoča|Podpredsednik|Podpredsednica)\s+)?(?:(?:Mag|Dr|Prof|mag|dr|prof)\.\s+)?(?P<ime>[A-ZČŠŽĆ][a-zčšžćđòóôöüûúùàáäâìíîï]+(?:\s+[A-ZČŠŽĆ][a-zčšžćđòóôöüûúùàáäâìíîï]+)+)(?:\s*\([^)]*\))?:"
     FIND_MISTER_OR_MADAM = r"(^GOSPOD\s?_{4,50}|^GOSPA\s?_{4,50})(:)?"
     FIND_MINISTER = r"(^(Nadaljevanje |nadaljevanje )?[A-ZČŠŽĆÖĐÒÓÔÖÜÛÚÙÀÁÄÂÌÍÎÏ.]{3,25}\s*(?:[(a-zčšžćöđòóôöüûúùàáäâìíîï,)])*? [A-ZČŠŽĆÖĐÒÓÔÖÜÛÚÙÀÁÄÂÌÍÎÏ., ]{3,25}){1}(\([A-ZČŠŽĆÖĐÒÓÔÖÜÛÚÙÀÁÄÂÌÍÎÏa-zčšžćöđòóôöüûúùàáäâìíî,ï ]*\)){0,1}(:)?(\s)?"
     FIND_TRAK = r"^([\dOab\.]{1,4}\s*.|[\dOab]{1,4}\s*.\s*(in|-)??\s*[\dOab]{1,4}\s*.)?\s*TRAK\b"
