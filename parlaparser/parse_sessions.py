@@ -146,7 +146,11 @@ class SessionParser(object):
                 for doc_unid in document_unids:
                     if doc_unid in self.document_keys:
                         document = self.documents[doc_unid]
-                        if document["title"] and document["title"] == "Sklic seje":
+                        if document["title"] and (
+                            document["title"] == "Sklic seje"
+                            or document["title"]
+                            == "Ukaz o sklicu 1. seje Državnega zbora Republike Slovenije"
+                        ):
                             sklic_seje_unid = doc_unid.split("|")[1]
                             break
                 if not sklic_seje_unid:
