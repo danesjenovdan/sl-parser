@@ -47,7 +47,7 @@ class LegislationParser(object):
 
     def parse(self):
         print("Start parsing")
-        self.mandate = MANDATE_GOV_ID
+        self.mandate = f"-{MANDATE_GOV_ID}"
         urls = [
             {
                 "url": "https://fotogalerija.dz-rs.si/datoteke/opendata/PZ.XML",
@@ -56,9 +56,9 @@ class LegislationParser(object):
                 "xml_key": "PZ",
             },
             {
-                "url": "https://fotogalerija.dz-rs.si/datoteke/opendata/PZ9.XML",
+                "url": "https://fotogalerija.dz-rs.si/datoteke/opendata/PZ10.XML",
                 "type": "law",
-                "file_name": "PZ9.XML",
+                "file_name": "PZ10.XML",
                 "xml_key": "PZ",
             },
             {
@@ -68,9 +68,9 @@ class LegislationParser(object):
                 "xml_key": "PA",
             },
             {
-                "url": "https://fotogalerija.dz-rs.si/datoteke/opendata/PA9.XML",
+                "url": "https://fotogalerija.dz-rs.si/datoteke/opendata/PA10.XML",
                 "type": "act",
-                "file_name": "PA9.XML",
+                "file_name": "PA10.XML",
                 "xml_key": "PA",
             },
         ]

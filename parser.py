@@ -79,6 +79,17 @@ except Exception as e:
 #     sentry_sdk.capture_exception(e)
 
 # # Reload data storage for new session key for legislation
+Session.keys = ["name", "organizations"]
+storage = DataStorage(
+    MANDATE, MANDATE_STARTIME, MAIN_ORG_ID, API_URL, API_AUTH[0], API_AUTH[1]
+)
+storage.MANDATE_GOV_ID = MANDATE_GOV_ID
+# legislation
+legislation_parser = LegislationParser(storage)
+legislation_parser.parse()
+
+
+# # Reload data storage for new session key for legislation
 # Session.keys = ["name", "organizations"]
 # storage = DataStorage(
 #     MANDATE, MANDATE_STARTIME, MAIN_ORG_ID, API_URL, API_AUTH[0], API_AUTH[1]
