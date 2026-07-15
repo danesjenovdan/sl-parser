@@ -23,12 +23,12 @@ from settings import (
 sentry_sdk.init(
     os.getenv("SENTRY_URL", None),
     environment=os.getenv("SENTRY_ENVIRONMENT", "test"),
-    # Set traces_sample_rate to 1.0 to capture 100%
-    # of transactions for performance monitoring.
-    # We recommend adjusting this value in production.
-    traces_sample_rate=1.0,
+    send_default_pii=True,
+    max_request_body_size="always",
+    traces_sample_rate=0,
+    send_client_reports=False,
+    auto_session_tracking=False,
 )
-
 
 storage = DataStorage(
     MANDATE, MANDATE_STARTIME, MAIN_ORG_ID, API_URL, API_AUTH[0], API_AUTH[1]
