@@ -43,12 +43,12 @@ LegislationConsideration.keys = [
     "session",
 ]
 
-# try:
-#     parse_sifrant = MembershipsParser(storage)
-#     parse_sifrant.parse()
-# except Exception as e:
-#     print(e)
-#     sentry_sdk.capture_exception(e)
+try:
+    parse_sifrant = MembershipsParser(storage)
+    parse_sifrant.parse()
+except Exception as e:
+    print(e)
+    sentry_sdk.capture_exception(e)
 
 # session votes / speeches
 try:
