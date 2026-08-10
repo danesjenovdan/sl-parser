@@ -389,11 +389,15 @@ class SpeechParser(object):
                 print(f"Found bolded text: {name_candidate}")
             # check if bolded text is valid person name
             try:
-                name_candidate = name_candidate[0].text.strip()
-                match = re.match(self.FIND_NAME, name_candidate)
-                person_line = None
-                if match:
-                    person_line = match.group("ime")
+                line_text = name_candidate = name_candidate[0].text
+                if line_text:
+                    line_text = line_text.strip()
+                    match = re.match(self.FIND_NAME, line_text)
+                    person_line = None
+                    if match:
+                        person_line = match.group("ime")
+                else:
+                    person_line = ""
                 # mister_or_madam_line = re.findall(
                 #     self.FIND_MISTER_OR_MADAM, name_candidate
                 # )
