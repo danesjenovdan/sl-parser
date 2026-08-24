@@ -542,18 +542,25 @@ class LegislationParser(object):
                     legislation_id=document_parent_object["legislation"]
                 )
             ]
+        else:
+            ex_urls = []
         for doc_unid in document_unids:
             if doc_unid in self.document_keys:
                 document = self.documents[doc_unid]
                 doc_title = document["title"]
+                tags = []
+                if doc_title:
+                    if "pobuda za zakonodajni referendum" in doc_title.lower():
+                        tags.append("referendum")
+                    elif "besedilo predloga zakona" in doc_title.lower():
+                        tags.append("proposal")
+                    elif "Besedilo zakona poslano Uradnemu listu" in doc_title:
+                        tags.append("enacted")
                 if "urls" in document.keys() and document["urls"]:
                     for doc_url in document["urls"]:
                         if doc_url in ex_urls:
                             continue
-                        link_data = {
-                            "url": doc_url,
-                            "name": doc_title,
-                        }
+                        link_data = {"url": doc_url, "name": doc_title, "tags": tags}
                         link_data.update(document_parent_object)
                         self.storage.parladata_api.links.set(link_data)
                 elif "sub-docs" in document.keys():
