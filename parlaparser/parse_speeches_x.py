@@ -148,19 +148,20 @@ class SpeechParser(object):
                 print("SET SESSION START TIME", new_start, time)
                 self.session.update_start_time(new_start)
 
-        start_time = datetime.strptime(
-            self.session.start_time, "%Y-%m-%dT%H:%M:%S"
-        )  # from isoformat
-        # check if start_time is set in the middle of the night
-        if self.is_midnight(start_time):
-            try:
-                hour, minute = time.split(":")
-                start_time = start_time.replace(hour=int(hour), minute=int(minute))
-                print("SET SESSION START TIME MIDNIGHT", new_start, time)
-                self.session.update_start_time(start_time)
-            except Exception as e:
-                print(e)
-                pass
+        if self.session.start_time:
+            start_time = datetime.strptime(
+                self.session.start_time, "%Y-%m-%dT%H:%M:%S"
+            )  # from isoformat
+            # check if start_time is set in the middle of the night
+            if self.is_midnight(start_time):
+                try:
+                    hour, minute = time.split(":")
+                    start_time = start_time.replace(hour=int(hour), minute=int(minute))
+                    print("SET SESSION START TIME MIDNIGHT", new_start, time)
+                    self.session.update_start_time(start_time)
+                except Exception as e:
+                    print(e)
+                    pass
 
     def parse(self):
         if not (self.parse_all_speeches or self.parse_new_speeches):
