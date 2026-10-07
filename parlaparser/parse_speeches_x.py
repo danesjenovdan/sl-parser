@@ -31,7 +31,7 @@ class SpeechParser(object):
         r"\d{1,2}\.\d{1,2}\.\d{4} \d{2}:\d{2}:\d{2}"  # 20.04.2026 09:00:00
     )
     FIND_PERSON = r"(^(Nadaljevanje |nadaljevanje )?[A-ZČŠŽĆÖĐÒÓÔÖÜÛÚÙÀÁÄÂÌÍÎÏ.]{3,25}\s*(?:[(A-ZČŠŽĆÖĐÒÓÔÖÜÛÚÙÀÁÄÂÌÍÎÏ)])*? [A-ZČŠŽĆÖĐÒÓÔÖÜÛÚÙÀÁÄÂÌÍÎÏ. ]{3,25}){1}(\([A-ZČŠŽĆÖĐÒÓÔÖÜÛÚÙÀÁÄÂÌÍÎÏa-zčšžćöđòóôöüûúùàáäâìíîï ]*\)){0,1}(:)?(\s)?"
-    FIND_NAME = r"^(?:(?:Nadaljevanje |nadaljevanje )?(?:Predsednik|Predsednica|Predsedujoči|Predsedujoča|Podpredsednik|Podpredsednica)\s+)?(?:(?:Mag|Dr|Prof|mag|dr|prof)\.\s+)?(?P<ime>[A-ZČŠŽĆ][a-zčšžćđòóôöüûúùàáäâìíîï]+(?:\s+[A-ZČŠŽĆ][a-zčšžćđòóôöüûúùàáäâìíîï]+)+)(?:\s*\([^)]*\))?:"
+    FIND_NAME = r"^(?:(?:Nadaljevanje |nadaljevanje )?(?:Predsednik|Predsednica|Predsedujoči|Predsedujoča|Podpredsednik|Podpredsednica)\s+)?(?:(?:Mag|Dr|Prof|mag|dr|prof)\.\s+)?(?P<ime>[A-ZČŠŽĆ][a-zčšžćđòóôöüûúùàáäâìíîï]+(?:\s+\(Ivan\))?(?:\s+[A-ZČŠŽĆ][a-zčšžćđòóôöüûúùàáäâìíîï]+)+)(?:\s*\([^)]*\))?:"
     FIND_MISTER_OR_MADAM = r"(^GOSPOD\s?_{4,50}|^GOSPA\s?_{4,50})(:)?"
     FIND_MINISTER = r"(^(Nadaljevanje |nadaljevanje )?[A-ZČŠŽĆÖĐÒÓÔÖÜÛÚÙÀÁÄÂÌÍÎÏ.]{3,25}\s*(?:[(a-zčšžćöđòóôöüûúùàáäâìíîï,)])*? [A-ZČŠŽĆÖĐÒÓÔÖÜÛÚÙÀÁÄÂÌÍÎÏ., ]{3,25}){1}(\([A-ZČŠŽĆÖĐÒÓÔÖÜÛÚÙÀÁÄÂÌÍÎÏa-zčšžćöđòóôöüûúùàáäâìíî,ï ]*\)){0,1}(:)?(\s)?"
     FIND_TRAK = r"^([\dOab\.]{1,4}\s*.|[\dOab]{1,4}\s*.\s*(in|-)??\s*[\dOab]{1,4}\s*.)?\s*TRAK\b"
@@ -353,10 +353,11 @@ class SpeechParser(object):
                 self.parse_person_line(line_tree)
 
         if self.current_person and self.current_text:
+            text = self.merge_text()
             self.page_content.append(
                 {
                     "person": self.fix_name(self.current_person),
-                    "content": "\n".join(self.current_text).lstrip(":"),
+                    "content": text,
                 }
             )
 
@@ -365,6 +366,21 @@ class SpeechParser(object):
             self.page_content = []
         else:
             self.pages.append(self.page_content)
+
+    def merge_text(self):
+        """
+        Merge the current text lines into a single string.
+        Strips leading colons from the resulting text.
+        Skip adding newline between elements if middle element is |DATE|
+        ["Ivan", "|DATE|", "Some text"] produce "Ivan Some text"
+        """
+        text = "\n".join(self.current_text).lstrip(":")
+        text = (
+            text.replace("\n|DATE|\n", " ")
+            .replace("|DATE|\n", " ")
+            .replace("\n|DATE|", " ")
+        )
+        return text
 
     def tostring_unwraped(self, element):
         string = element.text or ""
@@ -430,7 +446,7 @@ class SpeechParser(object):
                     self.page_content.append(
                         {
                             "person": self.fix_name(self.current_person),
-                            "content": "\n".join(self.current_text).lstrip(":"),
+                            "content": self.merge_text(),
                         }
                     )
                     self.current_text = []
@@ -456,6 +472,7 @@ class SpeechParser(object):
         if re.findall(self.FIND_END_OF_SESSION, line):
             return
         if re.search(self.DATE_TIME_REGEX, line):
+            self.current_text.append("|DATE|")
             return
 
         line = line.lstrip("(nadaljevanje)")
