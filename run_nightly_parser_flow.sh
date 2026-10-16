@@ -22,6 +22,8 @@ echo "update speeches to solr"
 python manage.py upload_speeches_to_solr
 echo "update votes to solr"
 python manage.py upload_votes_to_solr
+echo "merge legislation considerations"
+python manage.py merge_legislation_considerations --mandate 4 --priority-organizations 1 137 590 293
 echo "send notifications"
 python manage.py send_daily_notifications
 echo "run tests"
