@@ -31,7 +31,7 @@ class SpeechParser(object):
         r"\d{1,2}\.\d{1,2}\.\d{4} \d{2}:\d{2}:\d{2}"  # 20.04.2026 09:00:00
     )
     FIND_PERSON = r"(^(Nadaljevanje |nadaljevanje )?[A-ZČŠŽĆÖĐÒÓÔÖÜÛÚÙÀÁÄÂÌÍÎÏ.]{3,25}\s*(?:[(A-ZČŠŽĆÖĐÒÓÔÖÜÛÚÙÀÁÄÂÌÍÎÏ)])*? [A-ZČŠŽĆÖĐÒÓÔÖÜÛÚÙÀÁÄÂÌÍÎÏ. ]{3,25}){1}(\([A-ZČŠŽĆÖĐÒÓÔÖÜÛÚÙÀÁÄÂÌÍÎÏa-zčšžćöđòóôöüûúùàáäâìíîï ]*\)){0,1}(:)?(\s)?"
-    FIND_NAME = r"^(?:(?:Nadaljevanje |nadaljevanje )?(?:Predsednik|Predsednica|Predsedujoči|Predsedujoča|Podpredsednik|Podpredsednica)\s+)?(?:(?:Mag|Dr|Prof|mag|dr|prof)\.\s+)?(?P<ime>[A-ZČŠŽĆ][a-zčšžćđòóôöüûúùàáäâìíîï]+(?:\s+\(Ivan\))?(?:\s+[A-ZČŠŽĆ][a-zčšžćđòóôöüûúùàáäâìíîï]+)+)(?:\s*\([^)]*\))?:"
+    FIND_NAME = r"^(?:(?:Nadaljevanje |nadaljevanje )?(?:Predsednik|Predsednica|Predsedujoči|Predsedujoča|Podpredsednik|Podpredsednica)\s+)?(?:(?:Mag|Dr|Prof|mag|dr|prof)\.\s+)?(?P<ime>[A-ZČŠŽĆ][a-zčšžćđòóôöüûúùàáäâìíîï]+(?:\s+\(Ivan\))?(?:\s+[A-ZČŠŽĆ][a-zčšžćđòóôöüûúùàáäâìíîï]+)+)(?:\s*\([^)]*\))?:?"
     FIND_MISTER_OR_MADAM = r"(^GOSPOD\s?_{4,50}|^GOSPA\s?_{4,50})(:)?"
     FIND_MINISTER = r"(^(Nadaljevanje |nadaljevanje )?[A-ZČŠŽĆÖĐÒÓÔÖÜÛÚÙÀÁÄÂÌÍÎÏ.]{3,25}\s*(?:[(a-zčšžćöđòóôöüûúùàáäâìíîï,)])*? [A-ZČŠŽĆÖĐÒÓÔÖÜÛÚÙÀÁÄÂÌÍÎÏ., ]{3,25}){1}(\([A-ZČŠŽĆÖĐÒÓÔÖÜÛÚÙÀÁÄÂÌÍÎÏa-zčšžćöđòóôöüûúùàáäâìíî,ï ]*\)){0,1}(:)?(\s)?"
     FIND_TRAK = r"^([\dOab\.]{1,4}\s*.|[\dOab]{1,4}\s*.\s*(in|-)??\s*[\dOab]{1,4}\s*.)?\s*TRAK\b"
@@ -68,6 +68,12 @@ class SpeechParser(object):
         self.pages = []
         self.titles = []
         self.page_in_review = []
+        self.sittings_uids = []
+        self.saved_sittings_uids = (
+            {uid.lower() for uid in self.session.get_sittings_uids()}
+            if self.session
+            else set()
+        )
         self.DEBUG = debug
         self.read_files()
         self.in_review_controller()
@@ -77,13 +83,15 @@ class SpeechParser(object):
             print(f"Opening speeches from url: {url}")
             speeches_content = get_with_retry(url).text
             htree = html.fromstring(speeches_content)
-            self.page_htmls.append({"url": url, "tree": htree})
+            uid = url.split("uid=")[-1]
+            self.sittings_uids.append(uid)
             title = self.parse_title(htree)
             self.titles.append(title)
             if "v pregled" in title.lower():
                 self.page_in_review.append(True)
             else:
                 self.page_in_review.append(False)
+            self.page_htmls.append({"url": url, "tree": htree, "uid": uid})
 
     def in_review_controller(self):
         self.parse_all_speeches = False
@@ -119,6 +127,14 @@ class SpeechParser(object):
                 if not self.session.in_review:
                     self.session.patch_session({"in_review": True})
                 self.parse_all_speeches = True
+            else:
+                # check if new sitting has started in case that session wasnt in review
+                for sitting_uid in self.sittings_uids:
+                    if sitting_uid.lower() not in self.saved_sittings_uids:
+                        print("New sitting has started")
+                        self.parse_new_speeches = True
+                        self.session.patch_session({"in_review": True})
+                        break
 
     def update_session_start_time(self, time):
         """set session start time if not set yet"""
@@ -185,7 +201,7 @@ class SpeechParser(object):
                 return
 
             # gat date of sitting
-            maybe_date_element = htree.cssselect("table td")
+            maybe_date_element = htree.cssselect("table td span")
             if maybe_date_element:
                 self.date_of_sitting = maybe_date_element[-1].text
             else:
@@ -197,6 +213,29 @@ class SpeechParser(object):
                     dates = re.findall(self.DATE_REGEX, maybe_date)
                     if dates:
                         self.date_of_sitting = dates[0]
+
+            uid = page["uid"]
+            if not self.session:
+                print(f"No session set, skipping sitting lookup/creation for uid {uid}")
+                sitting = None
+            elif uid.lower() not in self.saved_sittings_uids:
+                if not self.date_of_sitting:
+                    raise ValueError(f"Unable to determine date for sitting {uid}")
+                try:
+                    sitting_date = datetime.strptime(
+                        self.date_of_sitting.strip(), "%d. %m. %Y"
+                    ).date()
+                except ValueError as exc:
+                    raise ValueError(
+                        f"Unable to parse date for sitting {uid}: "
+                        f"{self.date_of_sitting!r}"
+                    ) from exc
+                sitting = self.session.add_sitting(
+                    uid=uid,
+                    date=sitting_date.isoformat(),
+                )
+            else:
+                sitting = self.session.get_sitting_by_uid(uid)
 
             title = self.parse_title(htree)
             self.titles.append(title)
@@ -216,9 +255,7 @@ class SpeechParser(object):
             print(f"document has {len(self.page_content)} speeches")
             if not self.DEBUG:
                 start_order = self.save_speeches(
-                    start_order,
-                    last_added_index,
-                    self.session.start_time,
+                    start_order, last_added_index, self.session.start_time, sitting
                 )
             # Dont parse next spech page if cureent isn't valid
             if start_order == None:
@@ -240,7 +277,7 @@ class SpeechParser(object):
     def parse_title(self, htree):
         title = ""
         try:
-            title = htree.cssselect("form>h1")[0].text
+            title = htree.cssselect("form>div>h1")[0].text
         except:
             pass
         return title
@@ -646,7 +683,7 @@ class SpeechParser(object):
 
     # save SPEECHES
     def save_speeches(
-        self, start_order, last_added_index=None, session_start_time=None
+        self, start_order, last_added_index=None, session_start_time=None, sitting=None
     ):
         extract_date_reg = r"\((.*?)\)"
         the_order = start_order
@@ -707,6 +744,7 @@ class SpeechParser(object):
                     "speaker": person.id,
                     "content": speech["content"],
                     "session": self.session.id,
+                    "sitting": sitting.id if sitting else None,
                     "order": the_order,
                     "start_time": start_time,
                 }
