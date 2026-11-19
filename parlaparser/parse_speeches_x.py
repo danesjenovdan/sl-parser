@@ -30,6 +30,7 @@ class SpeechParser(object):
     DATE_TIME_REGEX = (
         r"\d{1,2}\.\d{1,2}\.\d{4} \d{2}:\d{2}:\d{2}"  # 20.04.2026 09:00:00
     )
+    WIRD_TIME = r"\d{2}\.\d{2}"  # for match 03.12
     FIND_PERSON = r"(^(Nadaljevanje |nadaljevanje )?[A-ZČŠŽĆÖĐÒÓÔÖÜÛÚÙÀÁÄÂÌÍÎÏ.]{3,25}\s*(?:[(A-ZČŠŽĆÖĐÒÓÔÖÜÛÚÙÀÁÄÂÌÍÎÏ)])*? [A-ZČŠŽĆÖĐÒÓÔÖÜÛÚÙÀÁÄÂÌÍÎÏ. ]{3,25}){1}(\([A-ZČŠŽĆÖĐÒÓÔÖÜÛÚÙÀÁÄÂÌÍÎÏa-zčšžćöđòóôöüûúùàáäâìíîï ]*\)){0,1}(:)?(\s)?"
     FIND_NAME = r"^(?:(?:Nadaljevanje |nadaljevanje )?(?:Predsednik|Predsednica|Predsedujoči|Predsedujoča|Podpredsednik|Podpredsednica)\s+)?(?:(?:Mag|Dr|Prof|mag|dr|prof)\.\s+)?(?P<ime>[A-ZČŠŽĆ][a-zčšžćđòóôöüûúùàáäâìíîï]+(?:\s+\(Ivan\))?(?:\s+[A-ZČŠŽĆ][a-zčšžćđòóôöüûúùàáäâìíîï]+)+)(?:\s*\([^)]*\))?:?"
     FIND_MISTER_OR_MADAM = r"(^GOSPOD\s?_{4,50}|^GOSPA\s?_{4,50})(:)?"
@@ -333,8 +334,10 @@ class SpeechParser(object):
         self.current_person = None
         self.current_text = []
 
-        for line in lines:
+        for idx, line in enumerate(lines):
             line_tree = html.fromstring(f"<span>{line}</span>")
+            # if idx == 100:
+            #     break
 
             if self.DEBUG:
                 print("---")
@@ -497,7 +500,7 @@ class SpeechParser(object):
                 self.state = ParserState.CONTENT
             else:
                 self.parse_text_line(line_tree)
-                self.state = ParserState.CONTENT
+                # self.state = ParserState.CONTENT
         else:
             self.parse_text_line(line_tree)
             self.state = ParserState.CONTENT
@@ -511,6 +514,11 @@ class SpeechParser(object):
         if re.search(self.DATE_TIME_REGEX, line):
             self.current_text.append("|DATE|")
             return
+        if re.search(self.WIRD_TIME, line):
+            # this is workaround "Zapis seje" files
+            self.current_text.append("|DATE|")
+            self.state = ParserState.NAME
+            return
 
         line = line.lstrip("(nadaljevanje)")
 
@@ -521,6 +529,7 @@ class SpeechParser(object):
                 self.append_to_last(line)
             else:
                 self.current_text.append(line)
+            self.state = ParserState.CONTENT
 
     def find_trak(self, line_tree):
         bold = line_tree.cssselect("b")
